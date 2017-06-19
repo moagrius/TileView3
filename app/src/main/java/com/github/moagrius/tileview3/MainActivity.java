@@ -1,0 +1,39 @@
+package com.github.moagrius.tileview3;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+
+public class MainActivity extends Activity {
+
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.main);
+    findViewById(R.id.textview_demos_scrollview_vertical).setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View view) {
+        startDemo(ScrollViewDemoVertical.class);
+      }
+    });
+    findViewById(R.id.textview_demos_scrollview_horizontal).setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View view) {
+        startDemo(ScrollViewDemoHorizontal.class);
+      }
+    });
+    findViewById(R.id.textview_demos_scrollview_universal).setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View view) {
+        startDemo(ScrollViewDemoUniversal.class);
+      }
+    });
+  }
+
+  private void startDemo(Class<? extends Activity> activityClass) {
+    Intent intent = new Intent(this, activityClass);
+    startActivity(intent);
+  }
+
+}
