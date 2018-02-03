@@ -1,4 +1,4 @@
-package com.github.moagrius.tileview3;
+package demo;
 
 import android.content.Context;
 import android.graphics.Color;

@@ -1,4 +1,4 @@
-package com.github.moagrius.tileview3;
+package com.github.moagrius.view;
 
 import android.view.MotionEvent;
 
@@ -14,7 +14,7 @@ public class TouchUpGestureDetector {
   }
 
   public boolean onTouchEvent(MotionEvent event) {
-    if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+    if (event.getActionMasked() == MotionEvent.ACTION_UP || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
       if (mOnTouchUpListener != null) {
         return mOnTouchUpListener.onTouchUp(event);
       }

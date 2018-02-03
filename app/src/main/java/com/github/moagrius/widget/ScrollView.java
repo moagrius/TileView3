@@ -1,4 +1,4 @@
-package com.github.moagrius.tileview3;
+package com.github.moagrius.widget;
 
 import android.content.Context;
 import android.support.v4.view.ViewCompat;
@@ -13,6 +13,8 @@ import android.view.ViewGroup;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 import android.widget.OverScroller;
+
+import com.github.moagrius.view.TouchUpGestureDetector;
 
 /**
  * TODO: overscroll methods
@@ -42,8 +44,6 @@ public class ScrollView extends FrameLayout implements
 
   private GestureDetector mGestureDetector;
   private TouchUpGestureDetector mTouchUpGestureDetector;
-
-  private ZoomAnimator mAnimator;
 
   /**
    * Constructor to use when creating a ScrollView from code.

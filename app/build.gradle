@@ -4,6 +4,7 @@ android {
     compileSdkVersion 23
     buildToolsVersion "25.0.0"
     defaultConfig {
+        vectorDrawables.useSupportLibrary = true
         applicationId "com.github.moagrius.tileview3"
         minSdkVersion 11
         targetSdkVersion 23

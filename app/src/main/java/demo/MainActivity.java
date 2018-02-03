@@ -1,9 +1,11 @@
-package com.github.moagrius.tileview3;
+package demo;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+
+import com.github.moagrius.tileview3.R;
 
 public class MainActivity extends Activity {
 
@@ -29,10 +31,16 @@ public class MainActivity extends Activity {
         startDemo(ScrollViewDemoUniversal.class);
       }
     });
-    findViewById(R.id.textview_demos_zoomscrollview_universal).setOnClickListener(new View.OnClickListener(){
+    findViewById(R.id.textview_demos_zoomscrollview_textviews).setOnClickListener(new View.OnClickListener(){
       @Override
       public void onClick(View view) {
-        startDemo(ZoomScrollViewDemoUniversal.class);
+        startDemo(ZoomScrollViewDemoTextViews.class);
+      }
+    });
+    findViewById(R.id.textview_demos_zoomscrollview_tiger).setOnClickListener(new View.OnClickListener(){
+      @Override
+      public void onClick(View view) {
+        startDemo(ZoomScrollViewDemoTiger.class);
       }
     });
   }
