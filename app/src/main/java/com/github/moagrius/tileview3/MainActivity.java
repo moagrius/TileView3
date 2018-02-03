@@ -29,6 +29,12 @@ public class MainActivity extends Activity {
         startDemo(ScrollViewDemoUniversal.class);
       }
     });
+    findViewById(R.id.textview_demos_zoomscrollview_universal).setOnClickListener(new View.OnClickListener(){
+      @Override
+      public void onClick(View view) {
+        startDemo(ZoomScrollViewDemoUniversal.class);
+      }
+    });
   }
 
   private void startDemo(Class<? extends Activity> activityClass) {

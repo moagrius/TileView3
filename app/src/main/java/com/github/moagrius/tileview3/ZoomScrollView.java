@@ -2,6 +2,7 @@ package com.github.moagrius.tileview3;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -25,17 +26,13 @@ public class ZoomScrollView extends ScrollView implements
 
   private MinimumScaleMode mMinimumScaleMode = MinimumScaleMode.COVER;
 
-  private float mScale = 1;
+  private float mScale = 1f;
+  private float mMinScale = 0f;
+  private float mMaxScale = 1f;
+  private float mEffectiveMinScale = 0f;
 
-  private float mMinScale = 0;
-  private float mMaxScale = 1;
-
-  private int mOffsetX;
-  private int mOffsetY;
-
-  private float mEffectiveMinScale = 0;
-  private float mMinimumScaleX;
-  private float mMinimumScaleY;
+  private boolean mWillHandleContentSize;
+  private boolean mShouldVisuallyScaleContents;
   private boolean mShouldLoopScale = true;
 
   public ZoomScrollView(Context context) {
@@ -54,13 +51,27 @@ public class ZoomScrollView extends ScrollView implements
   }
 
   @Override
-  public boolean onTouchEvent( MotionEvent event ) {
-    boolean gestureIntercept = mGestureDetector.onTouchEvent( event );
-    boolean scaleIntercept = mScaleGestureDetector.onTouchEvent( event );
-    return gestureIntercept || scaleIntercept || super.onTouchEvent( event );
+  public boolean onTouchEvent(MotionEvent event) {
+    boolean gestureIntercept = mGestureDetector.onTouchEvent(event);
+    boolean scaleIntercept = mScaleGestureDetector.onTouchEvent(event);
+    return gestureIntercept || scaleIntercept || super.onTouchEvent(event);
+  }
+
+  @Override
+  protected void onLayout( boolean changed, int l, int t, int r, int b ) {
+    super.onLayout(changed, l, t, r, b);
+    calculateMinimumScaleToFit();
   }
 
   // getters and setters
+
+  public ScaleChangedListener getScaleChangedListener() {
+    return mScaleChangedListener;
+  }
+
+  public void setScaleChangedListener(ScaleChangedListener scaleChangedListener) {
+    mScaleChangedListener = scaleChangedListener;
+  }
 
   public float getScale() {
     return mScale;
@@ -72,10 +83,16 @@ public class ZoomScrollView extends ScrollView implements
       float previous = mScale;
       mScale = scale;
       resetScrollPositionToWithinLimits();
-      invalidate();
+      if (mShouldVisuallyScaleContents && hasContent()) {
+        getChild().setPivotX(0);
+        getChild().setPivotY(0);  // TODO: this is a hassle to prefab but would be more efficient
+        getChild().setScaleX(mScale);
+        getChild().setScaleY(mScale);
+      }
       if (mScaleChangedListener != null) {
         mScaleChangedListener.onScaleChanged(this, mScale, previous);
       }
+      invalidate();
     }
   }
 
@@ -86,9 +103,10 @@ public class ZoomScrollView extends ScrollView implements
   // scale limits
 
   private void calculateMinimumScaleToFit() {
-    mMinimumScaleX = getWidth() / (float) getContentWidth();
-    mMinimumScaleY = getHeight() / (float) getContentHeight();
-    float recalculatedMinScale = computeMinimumScaleForMode(mMinimumScaleX, mMinimumScaleY);
+    float minimumScaleX = getWidth() / (float) getContentWidth();
+    Log.d("Z", "min scale, width=" + getWidth() + ", content=" + getContentWidth() + ", minscalex=" + minimumScaleX);
+    float minimumScaleY = getHeight() / (float) getContentHeight();
+    float recalculatedMinScale = computeMinimumScaleForMode(minimumScaleX, minimumScaleY);
     if (recalculatedMinScale != mEffectiveMinScale) {
       mEffectiveMinScale = recalculatedMinScale;
       if (mScale < mEffectiveMinScale) {
@@ -120,11 +138,17 @@ public class ZoomScrollView extends ScrollView implements
 
   @Override
   public int getContentWidth() {
+    if (mWillHandleContentSize) {
+      return super.getContentWidth();
+    }
     return (int) (super.getContentWidth() * mScale);
   }
 
   @Override
   public int getContentHeight() {
+    if (mWillHandleContentSize) {
+      return super.getContentHeight();
+    }
     return (int) (super.getContentHeight() * mScale);
   }
 
@@ -136,12 +160,13 @@ public class ZoomScrollView extends ScrollView implements
     mShouldLoopScale = shouldLoopScale;
   }
 
-  public ScaleChangedListener getScaleChangedListener() {
-    return mScaleChangedListener;
+  // normally we constrain scroll to scaled "size", which is not appropriate if the child is resizing itself based on scale
+  public void setWillHandleContentSize(boolean willHandleContentSize) {
+    mWillHandleContentSize = willHandleContentSize;
   }
 
-  public void setScaleChangedListener(ScaleChangedListener scaleChangedListener) {
-    mScaleChangedListener = scaleChangedListener;
+  public void setShouldVisuallyScaleContents(boolean shouldVisuallyScaleContents) {
+    mShouldVisuallyScaleContents = shouldVisuallyScaleContents;
   }
 
   // doers
@@ -217,6 +242,7 @@ public class ZoomScrollView extends ScrollView implements
 
   @Override
   public boolean onScale(ScaleGestureDetector scaleGestureDetector) {
+    Log.d("Z", "pinching...");
     float currentScale = mScale * mScaleGestureDetector.getScaleFactor();
     setScaleFromPosition(
       (int) scaleGestureDetector.getFocusX(),
@@ -227,7 +253,7 @@ public class ZoomScrollView extends ScrollView implements
 
   @Override
   public boolean onScaleBegin(ScaleGestureDetector scaleGestureDetector) {
-    return false;
+    return true;
   }
 
   @Override
@@ -238,5 +264,5 @@ public class ZoomScrollView extends ScrollView implements
   public interface ScaleChangedListener {
     void onScaleChanged(ZoomScrollView zoomScrollView, float currentScale, float previousScale);
   }
-  
+
 }

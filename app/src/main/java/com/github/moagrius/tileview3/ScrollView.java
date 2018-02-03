@@ -338,11 +338,11 @@ public class ScrollView extends FrameLayout implements
     super.scrollTo(x, y);
   }
 
-  private boolean hasContent() {
+  protected boolean hasContent() {
     return getChildCount() > 0;
   }
 
-  private View getChild() {
+  protected View getChild() {
     if (hasContent()) {
       return getChildAt(0);
     }
