@@ -43,6 +43,8 @@ public class ScrollView extends FrameLayout implements
   private GestureDetector mGestureDetector;
   private TouchUpGestureDetector mTouchUpGestureDetector;
 
+  private ZoomAnimator mAnimator;
+
   /**
    * Constructor to use when creating a ScrollView from code.
    *
@@ -347,12 +349,26 @@ public class ScrollView extends FrameLayout implements
     return null;
   }
 
+  public int getContentWidth() {
+    if (hasContent()) {
+      return getChild().getMeasuredWidth();
+    }
+    return 0;
+  }
+
+  public int getContentHeight() {
+    if (hasContent()) {
+      return getChild().getMeasuredHeight();
+    }
+    return 0;
+  }
+
   protected int getHalfWidth() {
-    return FloatMathHelper.scale(getWidth(), 0.5f);
+    return (int) ((getWidth() * 0.5f) + 0.5);
   }
 
   protected int getHalfHeight() {
-    return FloatMathHelper.scale(getHeight(), 0.5f);
+    return (int) ((getHeight() * 0.5f) + 0.5);
   }
 
   /**
@@ -370,16 +386,30 @@ public class ScrollView extends FrameLayout implements
     return Math.max(getScrollMinY(), Math.min(y, getScrollLimitY()));
   }
 
+  protected int getContentRight() {
+    if (hasContent()) {
+      return getChild().getLeft() + getContentWidth();
+    }
+    return 0;
+  }
+
   protected int getScrollLimitX() {
     if (hasContent()) {
-      return getChild().getLeft() + getChild().getMeasuredWidth() - getWidth();
+      return getContentRight() - getWidth(); // Math.max(0, blah) ?
+    }
+    return 0;
+  }
+
+  protected int getContentBottom() {
+    if (hasContent()) {
+      return getChild().getTop() + getContentHeight();
     }
     return 0;
   }
 
   protected int getScrollLimitY() {
     if (hasContent()) {
-      return getChild().getTop() + getChild().getMeasuredHeight() - getHeight();
+      return getContentBottom() - getHeight();  // Math.max(0, blah) ?
     }
     return 0;
   }
@@ -396,11 +426,8 @@ public class ScrollView extends FrameLayout implements
   public void computeScroll() {
     if (mOverScroller.computeScrollOffset()) {
       scrollTo(mOverScroller.getCurrX(), mOverScroller.getCurrY());
-      if (mOverScroller.isFinished()) {
-        if (mIsFlinging) {
-          mIsFlinging = false;
-        }
-      } else {
+      mIsFlinging = !mOverScroller.isFinished();
+      if (mIsFlinging) {
         ViewCompat.postInvalidateOnAnimation(this);
       }
     }
@@ -409,8 +436,8 @@ public class ScrollView extends FrameLayout implements
   @Override
   public boolean onDown(MotionEvent event) {
     if (mIsFlinging && !mOverScroller.isFinished()) {
+      mOverScroller.abortAnimation();
       mOverScroller.forceFinished(true);
-      mIsFlinging = false;
     }
     return true;
   }
@@ -422,7 +449,6 @@ public class ScrollView extends FrameLayout implements
       (int) -velocityX, (int) -velocityY,
       getScrollMinX(), getScrollLimitX(),
       getScrollMinY(), getScrollLimitY());
-    mIsFlinging = true;
     ViewCompat.postInvalidateOnAnimation(this);
     return true;
   }

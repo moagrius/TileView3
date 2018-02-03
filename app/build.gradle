@@ -5,10 +5,10 @@ android {
     buildToolsVersion "25.0.0"
     defaultConfig {
         applicationId "com.github.moagrius.tileview3"
-        minSdkVersion 9
+        minSdkVersion 11
         targetSdkVersion 23
-        versionCode 1
-        versionName "1.0"
+        versionCode 30000
+        versionName "3.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
