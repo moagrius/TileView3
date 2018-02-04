@@ -18,6 +18,7 @@
     <activity android:name="demo.ScrollViewDemoHorizontal" />
     <activity android:name="demo.ZoomScrollViewDemoTextViews" />
     <activity android:name="demo.ZoomScrollViewDemoTiger" />
+    <activity android:name="demo.ZoomScrollViewDemoTiles" />
   </application>
 
 </manifest>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.github.moagrius.widget.ZoomScrollView android:id="@+id/zoomscrollview"
+                                           xmlns:android="http://schemas.android.com/apk/res/android"
+                                           android:layout_width="match_parent"
+                                           android:layout_height="match_parent">
+
+  <com.github.moagrius.tileview.TileView
+    android:id="@+id/tileview"
+    android:layout_width="8967px"
+    android:layout_height="6726px" />
+
+</com.github.moagrius.widget.ZoomScrollView>

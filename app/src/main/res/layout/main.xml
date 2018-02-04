@@ -49,6 +49,14 @@
       android:text="ZoomScrollView Demo (SVG Tiger)"
       android:textSize="20dp" />
 
+    <TextView
+      android:id="@+id/textview_demos_zoomscrollview_tiles"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:padding="10dp"
+      android:text="ZoomScrollView Demo (Tiles)"
+      android:textSize="20dp" />
+
   </LinearLayout>
 
 </ScrollView>

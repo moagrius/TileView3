@@ -43,6 +43,12 @@ public class MainActivity extends Activity {
         startDemo(ZoomScrollViewDemoTiger.class);
       }
     });
+    findViewById(R.id.textview_demos_zoomscrollview_tiles).setOnClickListener(new View.OnClickListener(){
+      @Override
+      public void onClick(View view) {
+        startDemo(ZoomScrollViewDemoTiles.class);
+      }
+    });
   }
 
   private void startDemo(Class<? extends Activity> activityClass) {

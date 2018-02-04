@@ -45,6 +45,8 @@ public class ScrollView extends FrameLayout implements
   private GestureDetector mGestureDetector;
   private TouchUpGestureDetector mTouchUpGestureDetector;
 
+  private ScrollChangedListener mScrollChangedListener;
+
   /**
    * Constructor to use when creating a ScrollView from code.
    *
@@ -97,6 +99,14 @@ public class ScrollView extends FrameLayout implements
   public void addView(View child, int index, ViewGroup.LayoutParams params) {
     assertSingleChild();
     super.addView(child, index, params);
+  }
+
+  public ScrollChangedListener getScrollChangedListener() {
+    return mScrollChangedListener;
+  }
+
+  public void setScrollChangedListener(ScrollChangedListener scrollChangedListener) {
+    mScrollChangedListener = scrollChangedListener;
   }
 
   public void setOverScroller(OverScroller overScroller) {
@@ -335,7 +345,11 @@ public class ScrollView extends FrameLayout implements
   public void scrollTo(int x, int y) {
     x = getConstrainedScrollX(x);
     y = getConstrainedScrollY(y);
+    boolean changed = (x != getScrollX()) || (y != getScrollY());
     super.scrollTo(x, y);
+    if (changed && mScrollChangedListener != null) {
+      mScrollChangedListener.onScrollChanged(this, x, y);
+    }
   }
 
   protected boolean hasContent() {
@@ -573,4 +587,9 @@ public class ScrollView extends FrameLayout implements
     }
     return false;
   }
+
+  public interface ScrollChangedListener {
+    void onScrollChanged(ScrollView scrollView, int x, int y);
+  }
+
 }

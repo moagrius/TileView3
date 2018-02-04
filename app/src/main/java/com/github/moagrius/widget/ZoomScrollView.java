@@ -15,6 +15,7 @@ import java.lang.ref.WeakReference;
  * @author Mike Dunn, 2/2/18.
  */
 
+// TODO: demo with grid layout (or something like it)
 public class ZoomScrollView extends ScrollView implements
   GestureDetector.OnDoubleTapListener,
   ScaleGestureDetector.OnScaleGestureListener {
