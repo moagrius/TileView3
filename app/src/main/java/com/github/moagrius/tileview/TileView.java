@@ -34,7 +34,7 @@ public class TileView extends View implements
   private Set<Tile> mTilesVisibleInViewport = new HashSet<>();
 
   private Executor mExecutor = Executors.newFixedThreadPool(3);
-  private Throttler mRenderThrottle = new Throttler(50);
+  private Throttler mRenderThrottle = new Throttler(10);
 
   public TileView(Context context) {
     this(context, null);
