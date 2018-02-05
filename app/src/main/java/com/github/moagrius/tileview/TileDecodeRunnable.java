@@ -1,7 +1,6 @@
 package com.github.moagrius.tileview;
 
 import android.content.Context;
-import android.util.Log;
 
 import java.lang.ref.WeakReference;
 
@@ -21,7 +20,7 @@ public class TileDecodeRunnable implements Runnable {
 
   @Override
   public void run() {
-    Log.d("T", "TileDecodeRunnable.run");
+    //Log.d("T", "TileDecodeRunnable.run");
     Tile tile = mTileWeakReference.get();
     if (tile != null) {
       Context context = mContextWeakReference.get();

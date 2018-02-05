@@ -7,6 +7,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
+import com.github.moagrius.utils.Throttler;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
@@ -26,11 +27,14 @@ public class TileView extends View implements
 
   private float mScale = 1f;
 
+  private ZoomScrollView mZoomScrollView;
+
   private Rect mViewport = new Rect();
   private Set<Tile> mNewlyVisibleTiles = new HashSet<>();
   private Set<Tile> mTilesVisibleInViewport = new HashSet<>();
 
   private Executor mExecutor = Executors.newFixedThreadPool(3);
+  private Throttler mRenderThrottle = new Throttler(50);
 
   public TileView(Context context) {
     this(context, null);
@@ -44,18 +48,30 @@ public class TileView extends View implements
     super(context, attrs, defStyleAttr);
   }
 
+  public void setZoomScrollView(ZoomScrollView zoomScrollView) {
+    mZoomScrollView = zoomScrollView;
+    mZoomScrollView.setScrollChangedListener(this);
+    mZoomScrollView.setScaleChangedListener(this);
+    updateViewportAndComputeTilesThrottled();
+  }
+
   @Override
   public void onScaleChanged(ZoomScrollView zoomScrollView, float currentScale, float previousScale) {
     mScale = currentScale;
+    updateViewportAndComputeTilesThrottled();
     invalidate();
   }
 
   @Override
   public void onScrollChanged(ScrollView scrollView, int x, int y) {
     Log.d("T", "onScrollChanged");
-    mViewport.set(x, y, scrollView.getMeasuredWidth() + x, getMeasuredHeight() + y);
-    computeTilesInCurrentViewport();
-    invalidate();
+    updateViewportAndComputeTilesThrottled();
+  }
+
+  @Override
+  protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+    super.onLayout(changed, left, top, right, bottom);
+    updateViewportAndComputeTilesThrottled();
   }
 
   @Override
@@ -68,6 +84,26 @@ public class TileView extends View implements
     }
   }
 
+  private Runnable mUpdateAndComputeTilesRunnable = new Runnable() {
+    @Override
+    public void run() {
+      updateViewport();
+      computeTilesInCurrentViewport();
+    }
+  };
+
+  private void updateViewportAndComputeTilesThrottled() {
+    mRenderThrottle.attempt(mUpdateAndComputeTilesRunnable);
+  }
+
+  private void updateViewport() {
+    mViewport.set(
+      mZoomScrollView.getScrollX(),
+      mZoomScrollView.getScrollY(),
+      mZoomScrollView.getMeasuredWidth() + mZoomScrollView.getScrollX(),
+      mZoomScrollView.getMeasuredHeight() + mZoomScrollView.getScrollY());
+  }
+
   private void computeTilesInCurrentViewport() {
     Log.d("T", "computeTilesInCurrentViewport");
     Log.d("T", "current tile count: " + mTilesVisibleInViewport.size());
@@ -78,24 +114,34 @@ public class TileView extends View implements
     int columnStart = (int) Math.floor(mViewport.left / tileSize);
     int columnEnd = (int) Math.ceil(mViewport.right / tileSize);
     Log.d("T", rowStart + ", " + rowEnd + ", " + columnStart + ", " + columnEnd);
-    for( int rowCurrent = rowStart; rowCurrent < rowEnd; rowCurrent++ ) {
-      for( int columnCurrent = columnStart; columnCurrent < columnEnd; columnCurrent++ ) {
-        Tile tile = new Tile();
+    for( int rowCurrent = rowStart; rowCurrent <= rowEnd; rowCurrent++ ) {
+      for( int columnCurrent = columnStart; columnCurrent <= columnEnd; columnCurrent++ ) {
+        final Tile tile = new Tile();
         tile.setColumn(columnCurrent);
         tile.setRow(rowCurrent);
-        if (!mTilesVisibleInViewport.contains(tile)) {
-          mNewlyVisibleTiles.add(tile);
-          mExecutor.execute(new TileDecodeRunnable(tile, getContext()));
-        }
+        mNewlyVisibleTiles.add(tile);
       }
     }
+    Log.d("T", "newly visible: " + mNewlyVisibleTiles.size());
     Iterator<Tile> previousAndCurrentlyVisibleTileIterator = mTilesVisibleInViewport.iterator();
     while (previousAndCurrentlyVisibleTileIterator.hasNext()) {
-      if (!mNewlyVisibleTiles.contains(previousAndCurrentlyVisibleTileIterator.next())) {
+      Tile tile = previousAndCurrentlyVisibleTileIterator.next();
+      if (!mNewlyVisibleTiles.contains(tile)) {
         previousAndCurrentlyVisibleTileIterator.remove();
       }
     }
-    mTilesVisibleInViewport.addAll(mNewlyVisibleTiles);
+    for (final Tile tile : mNewlyVisibleTiles) {
+      boolean added = mTilesVisibleInViewport.add(tile);
+      if (added) {
+        mExecutor.execute(new Runnable() {
+          @Override
+          public void run() {
+            tile.decode(TileView.this.getContext());
+            postInvalidate();
+          }
+        });
+      }
+    }
     Log.d("T", "current tile count: " + mTilesVisibleInViewport.size());
   }
   
