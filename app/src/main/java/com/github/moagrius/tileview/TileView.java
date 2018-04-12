@@ -21,6 +21,10 @@ import java.util.concurrent.Executors;
  * @author Mike Dunn, 2/3/18.
  */
 
+// TODO:
+// use the tiles from the 100% image.
+// when scaled down to a new "detail level", inSampleSize doubles ( >> 1), which halves the size of the image
+// then apply the reverse scale to the image (as is done in current TileView)
 public class TileView extends View implements
   ZoomScrollView.ScaleChangedListener,
   ZoomScrollView.ScrollChangedListener {

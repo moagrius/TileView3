@@ -5,7 +5,7 @@ android {
     defaultConfig {
         vectorDrawables.useSupportLibrary = true
         applicationId "com.github.moagrius.tileview3"
-        minSdkVersion 11
+        minSdkVersion 14
         targetSdkVersion 27
         versionCode 30000
         versionName "3.0"
@@ -24,6 +24,6 @@ dependencies {
     androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    implementation 'com.android.support:appcompat-v7:23.4.0'
+    implementation 'com.android.support:appcompat-v7:27.0.0'
     testImplementation 'junit:junit:4.12'
 }
