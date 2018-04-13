@@ -287,7 +287,7 @@ public class ScrollView extends FrameLayout implements
   }
 
   /**
-   * Scrolls and centers the ScrollView to the x and y values provided.
+   * Scrolls and centers the ScrollView to the left and top values provided.
    *
    * @param x Horizontal destination point.
    * @param y Vertical destination point.
@@ -297,7 +297,7 @@ public class ScrollView extends FrameLayout implements
   }
 
   /**
-   * Scrolls and centers the ScrollView to the x and y values provided using scrolling animation.
+   * Scrolls and centers the ScrollView to the left and top values provided using scrolling animation.
    *
    * @param x Horizontal destination point.
    * @param y Vertical destination point.

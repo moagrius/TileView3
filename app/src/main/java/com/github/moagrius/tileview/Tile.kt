@@ -3,7 +3,8 @@ package com.github.moagrius.tileview
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.os.Build
+import android.graphics.Canvas
+import android.graphics.Rect
 import com.github.moagrius.utils.Hashes
 import java.lang.ref.SoftReference
 import java.util.*
@@ -20,6 +21,8 @@ class Tile {
 
   companion object {
 
+    const val TILE_SIZE = 256
+
     private val decodeBuffer = ByteArray(16 * 1024)
     private val bitmapOptions = BitmapFactory.Options()
 
@@ -33,21 +36,40 @@ class Tile {
   var bitmap: Bitmap? = null
   var state = State.IDLE
 
-  var row: Int = 0
+  var row = 0
     set(row) {
       field = row
-      y = (row * 256).toFloat()
+      top = (row * TILE_SIZE).toFloat()
+      bottom = top + TILE_SIZE
+      updateDestinationRect()
     }
-  var column: Int = 0
+  var column = 0
     set(column) {
       field = column
-      x = (column * 256).toFloat()
+      left = (column * TILE_SIZE).toFloat()
+      right = left + TILE_SIZE
+      updateDestinationRect()
     }
 
-  var x: Float = 0F
-  var y: Float = 0F
+  var left = 0F
+  var top = 0F
+  var right = 0F
+  var bottom = 0F
+
+  var scale = 0F
+  var sample = 1
+
+  private val sourceRect = Rect(0, 0, TILE_SIZE, TILE_SIZE)
+  private val destinationRect = Rect()
 
   private var reusableBitmaps: MutableSet<SoftReference<Bitmap>> = Collections.synchronizedSet(HashSet())
+
+  private fun updateDestinationRect() {
+    destinationRect.left = (left / scale).toInt()
+    destinationRect.top = (top / scale).toInt()
+    destinationRect.right = (right / scale).toInt()
+    destinationRect.bottom = (bottom / scale).toInt()
+  }
 
   fun decode(context: Context) {
     if (state != State.IDLE) {
@@ -63,7 +85,8 @@ class Tile {
           val options = BitmapFactory.Options()
           options.inTempStorage = decodeBuffer
           options.inPreferredConfig = Bitmap.Config.RGB_565
-          addInBitmapOptions(options)
+          //options.inSampleSize = sample
+          //addInBitmapOptions(options)
           bitmap = BitmapFactory.decodeStream(inputStream, null, bitmapOptions)
           state = State.DECODED
         } catch (e: OutOfMemoryError) {
@@ -92,6 +115,7 @@ class Tile {
 
   override fun hashCode() = Hashes.compute(17, 31, column, row)
 
+  /*
   private fun addInBitmapOptions(options: BitmapFactory.Options) {
     // inBitmap only works with mutable bitmaps, so force the decoder to
     // return mutable bitmaps.
@@ -149,15 +173,20 @@ class Tile {
     }
   }
 
-  /**
-   * A helper function to return the byte usage per pixel of a bitmap based on its configuration.
-   */
   private fun getBytesPerPixel(config: Bitmap.Config): Int {
     return when (config) {
       Bitmap.Config.ARGB_8888 -> 4
       Bitmap.Config.RGB_565 -> 2
       Bitmap.Config.ARGB_4444 -> 2
       else -> 1
+    }
+  }
+
+  */
+
+  fun draw(canvas: Canvas) {
+    bitmap?.let {
+      canvas.drawBitmap(bitmap, sourceRect, destinationRect, null)
     }
   }
 

@@ -93,9 +93,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
   public override fun onDraw(canvas: Canvas) {
     canvas.scale(scale, scale)
     for (tile in tilesVisibleInViewport) {
-      if (tile.bitmap != null) {
-        canvas.drawBitmap(tile.bitmap!!, tile.x, tile.y, null)
-      }
+      tile.draw(canvas)
     }
   }
 
@@ -117,7 +115,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     Log.d("T", "computeTilesInCurrentViewport")
     Log.d("T", "current tile count: " + tilesVisibleInViewport.size)
     newlyVisibleTiles.clear()
-    val tileSize = 256 * scale
+    val tileSize = Tile.TILE_SIZE * scale
     val rowStart = floor(viewport.top / tileSize).toInt()
     val rowEnd = ceil(viewport.bottom / tileSize).toInt()
     val columnStart = floor(viewport.left / tileSize).toInt()
@@ -128,7 +126,8 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
         val tile = Tile()
         tile.column = columnCurrent
         tile.row = rowCurrent
-
+        tile.sample = sampleSize
+        tile.scale = detailScale
         newlyVisibleTiles.add(tile)
       }
     }
