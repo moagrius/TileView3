@@ -28,6 +28,23 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     ScrollView.ScrollChangedListener {
 
   private var scale = 1f
+    set(scale) {
+      field = scale
+      detailScale = 1F
+      sampleSize = 1
+      val divisor = 2F
+      while (true) {
+        val next = detailScale / divisor
+        if (next < scale) {
+          break
+        }
+        sampleSize = sampleSize shl 1
+        detailScale = next
+      }
+    }
+
+  private var detailScale = 1f
+  private var sampleSize = 1
 
   private var zoomScrollView: ZoomScrollView? = null
 
@@ -96,18 +113,6 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     }
   }
 
-  private fun getSampleSize():Int {
-    var size = 1
-    var current = 1F
-    while (true) {
-      if (current < scale) {
-        break
-      }
-      size = size shl 1
-      current /= 2
-    }
-  }
-
   private fun computeTilesInCurrentViewport() {
     Log.d("T", "computeTilesInCurrentViewport")
     Log.d("T", "current tile count: " + tilesVisibleInViewport.size)
@@ -123,6 +128,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
         val tile = Tile()
         tile.column = columnCurrent
         tile.row = rowCurrent
+
         newlyVisibleTiles.add(tile)
       }
     }

@@ -44,8 +44,8 @@ class Tile {
       x = (column * 256).toFloat()
     }
 
-  var x: Float = 0.toFloat()
-  var y: Float = 0.toFloat()
+  var x: Float = 0F
+  var y: Float = 0F
 
   private var reusableBitmaps: MutableSet<SoftReference<Bitmap>> = Collections.synchronizedSet(HashSet())
 
