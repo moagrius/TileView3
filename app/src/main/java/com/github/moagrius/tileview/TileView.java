@@ -52,8 +52,13 @@ public class TileView extends View implements
     super(context, attrs, defStyleAttr);
   }
 
-  public void setZoomScrollView(ZoomScrollView zoomScrollView) {
-    mZoomScrollView = zoomScrollView;
+  @Override
+  protected void onAttachedToWindow() {
+    super.onAttachedToWindow();
+    if (!(getParent() instanceof ZoomScrollView)) {
+      throw new IllegalStateException("TileView must be a child of a ZoomScrollView");
+    }
+    mZoomScrollView = (ZoomScrollView) getParent();
     mZoomScrollView.setScrollChangedListener(this);
     mZoomScrollView.setScaleChangedListener(this);
     updateViewportAndComputeTilesThrottled();
@@ -86,6 +91,11 @@ public class TileView extends View implements
         canvas.drawBitmap(tile.getBitmap(), tile.getX(), tile.getY(), null);
       }
     }
+    /*
+    canvas.save();
+    canvas.scale(mScale, mScale);
+    canvas.restore();
+    */
   }
 
   private Runnable mUpdateAndComputeTilesRunnable = new Runnable() {

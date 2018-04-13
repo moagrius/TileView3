@@ -18,11 +18,9 @@ public class ZoomScrollViewDemoTiles extends AppCompatActivity {
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_demos_zoomscrollview_tileview);
-    ZoomScrollView zoomScrollView = (ZoomScrollView) findViewById(R.id.zoomscrollview);
-    TileView tileView = (TileView) findViewById(R.id.tileview);
-    tileView.setZoomScrollView(zoomScrollView);
-
-    //zoomScrollView.setShouldVisuallyScaleContents(true);
+    ZoomScrollView zoomScrollView = findViewById(R.id.zoomscrollview);
+    TileView tileView = findViewById(R.id.tileview);
+    zoomScrollView.setShouldVisuallyScaleContents(true);
   }
 
 }
