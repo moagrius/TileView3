@@ -67,6 +67,7 @@ public class TileView extends View implements
   @Override
   public void onScaleChanged(ZoomScrollView zoomScrollView, float currentScale, float previousScale) {
     mScale = currentScale;
+    Log.d("TV", "scale=" + mScale);
     updateViewportAndComputeTilesThrottled();
     invalidate();
   }
@@ -86,16 +87,15 @@ public class TileView extends View implements
   @Override
   public void onDraw(Canvas canvas) {
     Log.d("T", "onDraw");
+    //canvas.save();
+    canvas.scale(mScale, mScale);
     for (Tile tile : mTilesVisibleInViewport) {
       if (tile.getBitmap() != null) {
         canvas.drawBitmap(tile.getBitmap(), tile.getX(), tile.getY(), null);
       }
     }
-    /*
-    canvas.save();
-    canvas.scale(mScale, mScale);
-    canvas.restore();
-    */
+
+    //canvas.restore();
   }
 
   private Runnable mUpdateAndComputeTilesRunnable = new Runnable() {
@@ -122,7 +122,7 @@ public class TileView extends View implements
     Log.d("T", "computeTilesInCurrentViewport");
     Log.d("T", "current tile count: " + mTilesVisibleInViewport.size());
     mNewlyVisibleTiles.clear();
-    int tileSize = 256;
+    int tileSize = (int) (256 * mScale);
     int rowStart = (int) Math.floor(mViewport.top / tileSize);
     int rowEnd = (int) Math.ceil(mViewport.bottom / tileSize);
     int columnStart = (int) Math.floor(mViewport.left / tileSize);
