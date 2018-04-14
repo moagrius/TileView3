@@ -8,17 +8,19 @@
     android:supportsRtl="true"
     android:theme="@style/AppTheme">
     <activity android:name="demo.MainActivity" >
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-        <category android:name="android.intent.category.LAUNCHER" />
-      </intent-filter>
+
     </activity>
     <activity android:name="demo.ScrollViewDemoUniversal" />
     <activity android:name="demo.ScrollViewDemoVertical" />
     <activity android:name="demo.ScrollViewDemoHorizontal" />
     <activity android:name="demo.ZoomScrollViewDemoTextViews" />
     <activity android:name="demo.ZoomScrollViewDemoTiger" />
-    <activity android:name="demo.ZoomScrollViewDemoTiles" />
+    <activity android:name="demo.ZoomScrollViewDemoTiles">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
   </application>
 
 </manifest>

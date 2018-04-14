@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Rect
+import android.util.Log
 import com.github.moagrius.utils.Hashes
 import java.lang.ref.SoftReference
 import java.util.*
@@ -41,14 +42,12 @@ class Tile {
       field = row
       top = (row * TILE_SIZE).toFloat()
       bottom = top + TILE_SIZE
-      updateDestinationRect()
     }
   var column = 0
     set(column) {
       field = column
       left = (column * TILE_SIZE).toFloat()
       right = left + TILE_SIZE
-      updateDestinationRect()
     }
 
   var left = 0F
@@ -64,7 +63,8 @@ class Tile {
 
   private var reusableBitmaps: MutableSet<SoftReference<Bitmap>> = Collections.synchronizedSet(HashSet())
 
-  private fun updateDestinationRect() {
+  fun updateDestinationRect() {
+    //Log.d("T", "left:$left, scale:$scale")
     destinationRect.left = (left / scale).toInt()
     destinationRect.top = (top / scale).toInt()
     destinationRect.right = (right / scale).toInt()
@@ -85,17 +85,19 @@ class Tile {
           val options = BitmapFactory.Options()
           options.inTempStorage = decodeBuffer
           options.inPreferredConfig = Bitmap.Config.RGB_565
-          //options.inSampleSize = sample
+          options.inSampleSize = sample
           //addInBitmapOptions(options)
           bitmap = BitmapFactory.decodeStream(inputStream, null, bitmapOptions)
           state = State.DECODED
         } catch (e: OutOfMemoryError) {
+          Log.d("T", "OOME")
           // this is probably an out of memory error - you can try sleeping (this method won't be called in the UI thread) or try again (or give up)
         } catch (e: Exception) {
+          // unknown
         }
-
       }
     } catch (e: Exception) {
+      Log.d("T", "IOException in decode, probably can't find file")
       // this is probably an IOException, meaning the file can't be found
     }
 
@@ -186,6 +188,7 @@ class Tile {
 
   fun draw(canvas: Canvas) {
     bitmap?.let {
+      //Log.d("T", "drawing bitmap at $destinationRect")
       canvas.drawBitmap(bitmap, sourceRect, destinationRect, null)
     }
   }

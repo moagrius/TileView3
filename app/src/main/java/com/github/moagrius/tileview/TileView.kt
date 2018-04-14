@@ -128,6 +128,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
         tile.row = rowCurrent
         tile.sample = sampleSize
         tile.scale = detailScale
+        tile.updateDestinationRect()
         newlyVisibleTiles.add(tile)
       }
     }
