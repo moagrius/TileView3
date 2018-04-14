@@ -1,10 +1,12 @@
 package com.github.moagrius.tileview
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
 import android.util.AttributeSet
 import android.util.Log
+import android.util.LruCache
 import android.view.View
 import com.github.moagrius.utils.Throttler
 import com.github.moagrius.widget.ScrollView
@@ -53,6 +55,13 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
 
   private val executor = Executors.newFixedThreadPool(3)
   private val renderThrottle = Throttler(10)
+
+  private val memoryCache = object: LruCache<String, Bitmap>(((Runtime.getRuntime().maxMemory() / 1024) / 4).toInt()) {
+    override fun sizeOf(key: String, bitmap: Bitmap): Int {
+      // The cache size will be measured in kilobytes rather than number of items.
+      return bitmap.byteCount / 1024
+    }
+  }
 
   private val updateAndComputeTilesRunnable = Runnable {
     updateViewport()
@@ -110,6 +119,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     }
   }
 
+  // TODO: when "clicking" over to or from a new sample size, we need to redraw all tiles
   private fun computeTilesInCurrentViewport() {
     Log.d("T", "computeTilesInCurrentViewport")
     Log.d("T", "current tile count: " + tilesVisibleInViewport.size)
@@ -141,7 +151,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
       val added = tilesVisibleInViewport.add(tile)
       if (added) {
         executor.execute {
-          tile.decode(context)
+          tile.decode(context, memoryCache)
           postInvalidate()
         }
       }

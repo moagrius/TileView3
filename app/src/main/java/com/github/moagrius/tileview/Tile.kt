@@ -59,24 +59,16 @@ class Tile {
 
   private val reusableBitmaps: MutableSet<SoftReference<Bitmap>> = Collections.synchronizedSet(HashSet())
 
-  private val memoryCache = object: LruCache<String, Bitmap>(((Runtime.getRuntime().maxMemory() / 1024) / 4).toInt()) {
-    override fun sizeOf(key:String, bitmap:Bitmap): Int{
-      // The cache size will be measured in kilobytes rather than number of items.
-      return bitmap.byteCount / 1024
-    }
-  }
-
-  fun decode(context: Context) {
+  fun decode(context: Context, cache: LruCache<String, Bitmap>) {
     if (state != State.IDLE) {
       return
     }
     state = State.DECODING
     val formattedFileName = "tiles/phi-500000-${column}_$row.jpg"
     val memoryCacheKey = formattedFileName + sample
-    bitmap = memoryCache.get(memoryCacheKey)
-    Log.d("T", "cached bitmap $bitmap for $memoryCacheKey")
+    bitmap = cache[memoryCacheKey]
     if (bitmap != null) {
-      Log.d("T", "using a bitmap from memory cache")
+      Log.d("T", "got bitmap from memory cache")
       state = State.DECODED
       return
     }
@@ -92,10 +84,8 @@ class Tile {
           Log.d("T", "sample: $sample")
           addInBitmapOptions(options)
           bitmap = BitmapFactory.decodeStream(inputStream, null, bitmapOptions)
+          cache.put(memoryCacheKey, bitmap)
           state = State.DECODED
-          // cache it
-          Log.d("T", "putting a bitmap in memory cache at $memoryCacheKey")
-          memoryCache.put(memoryCacheKey, bitmap)
         } catch (e: OutOfMemoryError) {
           Log.d("T", "OOME")
           // this is probably an out of memory error - you can try sleeping (this method won't be called in the UI thread) or try again (or give up)
@@ -187,6 +177,11 @@ class Tile {
     bitmap?.let {
       canvas.drawBitmap(bitmap, null, destinationRect, null)
     }
+  }
+
+  interface Cache {
+    fun get(key:Any):Bitmap
+    fun put(key:Any, bitmap:Bitmap)
   }
 
 }
