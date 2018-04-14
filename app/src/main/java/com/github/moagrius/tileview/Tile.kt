@@ -5,7 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Rect
+import android.os.Build
 import android.util.Log
+import android.util.LruCache
 import com.github.moagrius.utils.Hashes
 import java.lang.ref.SoftReference
 import java.util.*
@@ -24,6 +26,7 @@ class Tile {
 
     const val TILE_SIZE = 256
 
+    //https://developer.android.com/reference/android/graphics/BitmapFactory.Options.html#inTempStorage
     private val decodeBuffer = ByteArray(16 * 1024)
     private val bitmapOptions = BitmapFactory.Options()
 
@@ -54,7 +57,14 @@ class Tile {
 
   private val destinationRect = Rect()
 
-  private var reusableBitmaps: MutableSet<SoftReference<Bitmap>> = Collections.synchronizedSet(HashSet())
+  private val reusableBitmaps: MutableSet<SoftReference<Bitmap>> = Collections.synchronizedSet(HashSet())
+
+  private val memoryCache = object: LruCache<String, Bitmap>(((Runtime.getRuntime().maxMemory() / 1024) / 4).toInt()) {
+    override fun sizeOf(key:String, bitmap:Bitmap): Int{
+      // The cache size will be measured in kilobytes rather than number of items.
+      return bitmap.byteCount / 1024
+    }
+  }
 
   fun decode(context: Context) {
     if (state != State.IDLE) {
@@ -62,6 +72,14 @@ class Tile {
     }
     state = State.DECODING
     val formattedFileName = "tiles/phi-500000-${column}_$row.jpg"
+    val memoryCacheKey = formattedFileName + sample
+    bitmap = memoryCache.get(memoryCacheKey)
+    Log.d("T", "cached bitmap $bitmap for $memoryCacheKey")
+    if (bitmap != null) {
+      Log.d("T", "using a bitmap from memory cache")
+      state = State.DECODED
+      return
+    }
     val assetManager = context.assets
     try {
       val inputStream = assetManager.open(formattedFileName)
@@ -71,9 +89,13 @@ class Tile {
           options.inTempStorage = decodeBuffer
           options.inPreferredConfig = Bitmap.Config.RGB_565
           options.inSampleSize = sample
-          //addInBitmapOptions(options)
+          Log.d("T", "sample: $sample")
+          addInBitmapOptions(options)
           bitmap = BitmapFactory.decodeStream(inputStream, null, bitmapOptions)
           state = State.DECODED
+          // cache it
+          Log.d("T", "putting a bitmap in memory cache at $memoryCacheKey")
+          memoryCache.put(memoryCacheKey, bitmap)
         } catch (e: OutOfMemoryError) {
           Log.d("T", "OOME")
           // this is probably an out of memory error - you can try sleeping (this method won't be called in the UI thread) or try again (or give up)
@@ -102,26 +124,18 @@ class Tile {
 
   override fun hashCode() = Hashes.compute(17, 31, column, row)
 
-  /*
   private fun addInBitmapOptions(options: BitmapFactory.Options) {
-    // inBitmap only works with mutable bitmaps, so force the decoder to
-    // return mutable bitmaps.
+    // inBitmap only works with mutable bitmaps, so force the decoder to return mutable bitmaps.
     options.inMutable = true
-
-
     // Try to find a bitmap to use for inBitmap.
     val inBitmap = getBitmapFromReusableSet(options)
-
     if (inBitmap != null) {
-      // If a suitable bitmap has been found, set it as the value of
-      // inBitmap.
+      // If a suitable bitmap has been found, set it as the value of inBitmap.
       options.inBitmap = inBitmap
     }
-
   }
 
-  // This method iterates through the reusable bitmaps, looking for one
-  // to use for inBitmap:
+  // This method iterates through the reusable bitmaps, looking for one to use for inBitmap
   private fun getBitmapFromReusableSet(options: BitmapFactory.Options): Bitmap? {
     var bitmap: Bitmap? = null
     if (!reusableBitmaps.isEmpty()) {
@@ -169,11 +183,8 @@ class Tile {
     }
   }
 
-  */
-
   fun draw(canvas: Canvas) {
     bitmap?.let {
-      //Log.d("T", "drawing bitmap at $destinationRect")
       canvas.drawBitmap(bitmap, null, destinationRect, null)
     }
   }
