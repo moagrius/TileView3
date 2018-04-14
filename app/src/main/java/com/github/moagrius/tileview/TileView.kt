@@ -149,6 +149,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     }
     for (tile in newlyVisibleTiles) {
       val added = tilesVisibleInViewport.add(tile)
+      // TODO: anything that's decoding that isn't in the set should be stopped
       if (added) {
         executor.execute {
           tile.decode(context, memoryCache)
