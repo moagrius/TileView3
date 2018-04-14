@@ -40,36 +40,21 @@ class Tile {
   var row = 0
     set(row) {
       field = row
-      top = (row * TILE_SIZE).toFloat()
-      bottom = top + TILE_SIZE
+      destinationRect.top = row * TILE_SIZE
+      destinationRect.bottom = destinationRect.top + TILE_SIZE
     }
   var column = 0
     set(column) {
       field = column
-      left = (column * TILE_SIZE).toFloat()
-      right = left + TILE_SIZE
+      destinationRect.left = column * TILE_SIZE
+      destinationRect.right = destinationRect.left + TILE_SIZE
     }
 
-  var left = 0F
-  var top = 0F
-  var right = 0F
-  var bottom = 0F
-
-  var scale = 0F
   var sample = 1
 
-  private val sourceRect = Rect(0, 0, TILE_SIZE, TILE_SIZE)
   private val destinationRect = Rect()
 
   private var reusableBitmaps: MutableSet<SoftReference<Bitmap>> = Collections.synchronizedSet(HashSet())
-
-  fun updateDestinationRect() {
-    //Log.d("T", "left:$left, scale:$scale")
-    destinationRect.left = (left / scale).toInt()
-    destinationRect.top = (top / scale).toInt()
-    destinationRect.right = (right / scale).toInt()
-    destinationRect.bottom = (bottom / scale).toInt()
-  }
 
   fun decode(context: Context) {
     if (state != State.IDLE) {
@@ -189,7 +174,7 @@ class Tile {
   fun draw(canvas: Canvas) {
     bitmap?.let {
       //Log.d("T", "drawing bitmap at $destinationRect")
-      canvas.drawBitmap(bitmap, sourceRect, destinationRect, null)
+      canvas.drawBitmap(bitmap, null, destinationRect, null)
     }
   }
 

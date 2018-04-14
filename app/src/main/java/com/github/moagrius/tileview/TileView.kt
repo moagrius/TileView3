@@ -30,20 +30,19 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
   private var scale = 1f
     set(scale) {
       field = scale
-      detailScale = 1F
       sampleSize = 1
+      var current = 1F
       val divisor = 2F
       while (true) {
-        val next = detailScale / divisor
+        val next = current / divisor
         if (next < scale) {
           break
         }
         sampleSize = sampleSize shl 1
-        detailScale = next
+        current = next
       }
     }
 
-  private var detailScale = 1f
   private var sampleSize = 1
 
   private var zoomScrollView: ZoomScrollView? = null
@@ -127,8 +126,6 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
         tile.column = columnCurrent
         tile.row = rowCurrent
         tile.sample = sampleSize
-        tile.scale = detailScale
-        tile.updateDestinationRect()
         newlyVisibleTiles.add(tile)
       }
     }
