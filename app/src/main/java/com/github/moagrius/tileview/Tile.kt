@@ -83,7 +83,7 @@ class Tile {
           options.inSampleSize = sample
           Log.d("T", "sample: $sample")
           addInBitmapOptions(options)
-          bitmap = BitmapFactory.decodeStream(inputStream, null, bitmapOptions)
+          bitmap = BitmapFactory.decodeStream(inputStream, null, options)
           cache.put(memoryCacheKey, bitmap)
           state = State.DECODED
         } catch (e: OutOfMemoryError) {
