@@ -32,10 +32,11 @@ class Tile {
   private val destinationRect = Rect()
 
   private fun updateDestinationRect() {
+    val sample = options?.inSampleSize ?: 1
     destinationRect.left = column * TILE_SIZE
-    destinationRect.right = destinationRect.left + TILE_SIZE
     destinationRect.top = row * TILE_SIZE
-    destinationRect.bottom = destinationRect.top + TILE_SIZE
+    destinationRect.right = destinationRect.left + (TILE_SIZE * sample) - 20
+    destinationRect.bottom = destinationRect.top + (TILE_SIZE * sample) - 20
   }
 
   fun decode(context: Context) {
@@ -44,7 +45,11 @@ class Tile {
     }
     state = State.DECODING
     updateDestinationRect()
-    val file = "tiles/phi-500000-${column}_$row.jpg"
+    val file = if (options?.inSampleSize == 2) {
+      "tiles/phi-250000-${column/2}_${row/2}.jpg"
+    } else {
+      "tiles/phi-500000-${column}_$row.jpg"
+    }
     val stream = context.assets.open(file)
     stream?.let {
       bitmap = BitmapFactory.decodeStream(stream, null, options)

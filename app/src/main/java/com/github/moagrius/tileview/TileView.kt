@@ -31,11 +31,13 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     //https://developer.android.com/reference/android/graphics/BitmapFactory.Options.html#inTempStorage
     bitmapOptions.inPreferredConfig = Bitmap.Config.RGB_565
     bitmapOptions.inTempStorage = ByteArray(16 * 1024)
+    bitmapOptions.inSampleSize = 1
   }
 
   private var scale = 1f
     set(scale) {
       field = scale
+      val previous = bitmapOptions.inSampleSize
       bitmapOptions.inSampleSize = 1
       var current = 1F
       val divisor = 2F
@@ -47,6 +49,10 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
         bitmapOptions.inSampleSize = bitmapOptions.inSampleSize shl 1
         current = next
       }
+      if (bitmapOptions.inSampleSize != previous) {
+        tilesVisibleInViewport.clear()
+      }
+      Log.d("DL", "sample: ${bitmapOptions.inSampleSize}")
     }
 
   private var zoomScrollView: ZoomScrollView? = null
@@ -119,13 +125,20 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     val rowEnd = ceil(viewport.bottom / tileSize).toInt()
     val columnStart = floor(viewport.left / tileSize).toInt()
     val columnEnd = ceil(viewport.right / tileSize).toInt()
-    Log.d("T", "$rowStart, $rowEnd, $columnStart, $columnEnd")
-    for (rowCurrent in rowStart..rowEnd) {
-      for (columnCurrent in columnStart..columnEnd) {
+    //Log.d("T", "$rowStart, $rowEnd, $columnStart, $columnEnd")
+    val sample = bitmapOptions.inSampleSize
+    for (row in rowStart..rowEnd) {
+      if (row % sample != 0) {
+        continue
+      }
+      for (column in columnStart..columnEnd) {
+        if (column % sample != 0) {
+          continue
+        }
         val tile = Tile()
         tile.options = bitmapOptions
-        tile.column = columnCurrent
-        tile.row = rowCurrent
+        tile.column = column
+        tile.row = row
         newlyVisibleTiles.add(tile)
       }
     }
