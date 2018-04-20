@@ -146,20 +146,15 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
   private void computeTilesInCurrentViewport() {
     mNewlyVisibleTiles.clear();
     float tileSize = Tile.TILE_SIZE * mScale;
-    int rowStart = (int) Math.floor(mViewport.top / tileSize);
-    int rowEnd = (int) Math.ceil(mViewport.bottom / tileSize);
-    int columnStart = (int) Math.floor(mViewport.left / tileSize);
-    int columnEnd = (int) Math.ceil(mViewport.right / tileSize);
-    //Log.d("T", "$rowStart, $rowEnd, $columnStart, $columnEnd")
     int sample = mBitmapOptions.inSampleSize;
+
+    int rowStart = (int) Math.floor((mViewport.top / tileSize) / sample) * sample;
+    int rowEnd = (int) Math.ceil((mViewport.bottom / tileSize) / sample) * sample;
+    int columnStart = (int) Math.floor((mViewport.left / tileSize) / sample) * sample;
+    int columnEnd = (int) Math.ceil((mViewport.right / tileSize) / sample) * sample;
+    //Log.d("T", "$rowStart, $rowEnd, $columnStart, $columnEnd")
     for (int row = rowStart; row < rowEnd; row += sample) {
-      if (row % sample != 0) {
-        //continue;
-      }
       for (int column = columnStart; column < columnEnd; column += sample) {
-        if (column % sample != 0) {
-          //continue;
-        }
         Tile tile = new Tile();
         tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
