@@ -137,8 +137,8 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
         }
         val tile = Tile()
         tile.options = bitmapOptions
-        tile.column = column
-        tile.row = row
+        tile.startColumn = column
+        tile.startRow = row
         newlyVisibleTiles.add(tile)
       }
     }
