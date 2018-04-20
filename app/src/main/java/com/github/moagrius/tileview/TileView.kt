@@ -26,6 +26,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     ScrollView.ScrollChangedListener {
 
   private val bitmapOptions = BitmapFactory.Options()
+
   init {
     //https://developer.android.com/reference/android/graphics/BitmapFactory.Options.html#inTempStorage
     bitmapOptions.inPreferredConfig = Bitmap.Config.RGB_565
@@ -143,7 +144,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
           try {
             tile.decode(context)
             postInvalidate()
-          } catch (e:Exception) {
+          } catch (e: Exception) {
             Log.d("TV", "exception decoding: ${e.message}")
           }
         }
