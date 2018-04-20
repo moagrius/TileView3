@@ -1,10 +1,7 @@
 package com.github.moagrius.tileview
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Rect
+import android.graphics.*
 import android.util.Log
 import com.github.moagrius.utils.Hashes
 
@@ -41,8 +38,8 @@ class Tile {
   private fun updateDestinationRect() {
     destinationRect.left = startColumn * TILE_SIZE
     destinationRect.top = startRow * TILE_SIZE
-    destinationRect.right = destinationRect.left + (TILE_SIZE * sampleSize) - 20
-    destinationRect.bottom = destinationRect.top + (TILE_SIZE * sampleSize) - 20
+    destinationRect.right = destinationRect.left + (TILE_SIZE * sampleSize)
+    destinationRect.bottom = destinationRect.top + (TILE_SIZE * sampleSize)
   }
 
   fun decode(context: Context, cache: Cache) {
@@ -59,6 +56,7 @@ class Tile {
       return
     }
     val canvas = Canvas(bitmap)
+    canvas.drawColor(Color.GREEN)
     val size = TILE_SIZE / sampleSize.toFloat()
     for (i in 0 until sampleSize) {
       for (j in 0 until sampleSize) {

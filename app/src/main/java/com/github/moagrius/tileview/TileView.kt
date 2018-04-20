@@ -160,7 +160,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
             tile.decode(context, memoryCache)
             postInvalidate()
           } catch (e: Exception) {
-            Log.d("TV", "exception decoding: ${e.message}")
+            Log.d("TV", "exception decoding: ${e.javaClass}, ${e.message}")
           }
         }
       }
