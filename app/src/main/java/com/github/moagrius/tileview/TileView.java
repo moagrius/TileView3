@@ -98,6 +98,7 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
       current = next;
     }
     if (mBitmapOptions.inSampleSize != previous) {
+      Log.d("DL", "clearing tiles");
       mTilesVisibleInViewport.clear();
     }
     invalidate();
@@ -151,13 +152,13 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
     int columnEnd = (int) Math.ceil(mViewport.right / tileSize);
     //Log.d("T", "$rowStart, $rowEnd, $columnStart, $columnEnd")
     int sample = mBitmapOptions.inSampleSize;
-    for (int row = rowStart; row < rowEnd; row++) {
+    for (int row = rowStart; row < rowEnd; row += sample) {
       if (row % sample != 0) {
-        continue;
+        //continue;
       }
-      for (int column = columnStart; column < columnEnd; column++) {
+      for (int column = columnStart; column < columnEnd; column += sample) {
         if (column % sample != 0) {
-          continue;
+          //continue;
         }
         Tile tile = new Tile();
         tile.setOptions(mBitmapOptions);

@@ -93,6 +93,7 @@ public class Tile {
     canvas.drawBitmap(bitmap, null, destinationRect, null);
   }
 
+  // TODO: this is not recognizing composite tiles correctly, so is over-aggressively redrawing
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof Tile) {
