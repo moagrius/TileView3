@@ -73,7 +73,7 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
       throw new IllegalStateException("TileView must be a descendant of a ZoomScrollView");
     }
     mZoomScrollView = (ZoomScrollView) getParent();
-    mZoomScrollView.setScrollChangedListener(this);
+    mZoomScrollView.setScaleChangedListener(this);
     mZoomScrollView.setScrollChangedListener(this);
     updateViewportAndComputeTilesThrottled();
   }
@@ -84,6 +84,7 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
 
   public void setScale(float scale) {
     mScale = scale;
+    Log.d("DL", "setting scale: " + scale);
     int previous = mBitmapOptions.inSampleSize;
     mBitmapOptions.inSampleSize = 1;
     float current = 1f;
@@ -99,7 +100,8 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
     if (mBitmapOptions.inSampleSize != previous) {
       mTilesVisibleInViewport.clear();
     }
-    Log.d("DL", "sample: ${bitmapOptions.inSampleSize}");
+    invalidate();
+    Log.d("DL", "sample: " + mBitmapOptions.inSampleSize);
   }
 
   @Override
@@ -117,7 +119,6 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
   public void onScaleChanged(ZoomScrollView zoomScrollView, float currentScale, float previousScale) {
     setScale(currentScale);
     updateViewportAndComputeTilesThrottled();
-    invalidate();
   }
 
   @Override
@@ -143,7 +144,7 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
 
   private void computeTilesInCurrentViewport() {
     mNewlyVisibleTiles.clear();
-    float tileSize = KTile.TILE_SIZE * mScale;
+    float tileSize = Tile.TILE_SIZE * mScale;
     int rowStart = (int) Math.floor(mViewport.top / tileSize);
     int rowEnd = (int) Math.ceil(mViewport.bottom / tileSize);
     int columnStart = (int) Math.floor(mViewport.left / tileSize);
