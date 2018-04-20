@@ -4,7 +4,7 @@
                                            android:layout_width="match_parent"
                                            android:layout_height="match_parent">
 
-  <com.github.moagrius.tileview.TileView
+  <com.github.moagrius.tileview.KTileView
     android:id="@+id/tileview"
     android:layout_width="8967px"
     android:layout_height="6726px"

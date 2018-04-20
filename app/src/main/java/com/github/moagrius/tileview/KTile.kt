@@ -9,7 +9,7 @@ import com.github.moagrius.utils.Hashes
  * @author Mike Dunn, 2/4/18.
  */
 
-class Tile {
+class KTile {
 
   enum class State {
     IDLE, DECODING, DECODED
@@ -83,7 +83,7 @@ class Tile {
   }
 
   // TODO: we may want to actually comment this out and use memory addresses for equals, as this might be confusing things
-  override fun equals(other: Any?): Boolean = other is Tile && other.startColumn == startColumn && other.startRow == startRow && other.sampleSize == sampleSize
+  override fun equals(other: Any?): Boolean = other is KTile && other.startColumn == startColumn && other.startRow == startRow && other.sampleSize == sampleSize
   override fun hashCode() = Hashes.compute(17, 31, startColumn, startRow)
 
   interface Cache {

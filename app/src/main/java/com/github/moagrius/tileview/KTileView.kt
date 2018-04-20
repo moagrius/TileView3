@@ -20,7 +20,7 @@ import kotlin.math.floor
  * @author Mike Dunn, 2/3/18.
  */
 
-class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) :
+class KTileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) :
     View(context, attrs, defStyleAttr),
     ZoomScrollView.ScaleChangedListener,
     ScrollView.ScrollChangedListener {
@@ -58,8 +58,8 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
   private var zoomScrollView: ZoomScrollView? = null
 
   private val viewport = Rect()
-  private val newlyVisibleTiles = HashSet<Tile>()
-  private val tilesVisibleInViewport = HashSet<Tile>()
+  private val newlyVisibleTiles = HashSet<KTile>()
+  private val tilesVisibleInViewport = HashSet<KTile>()
 
   private val executor = Executors.newFixedThreadPool(3)
   private val renderThrottle = Throttler(10)
@@ -122,7 +122,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
 
   private fun computeTilesInCurrentViewport() {
     newlyVisibleTiles.clear()
-    val tileSize = Tile.TILE_SIZE * scale
+    val tileSize = KTile.TILE_SIZE * scale
     val rowStart = floor(viewport.top / tileSize).toInt()
     val rowEnd = ceil(viewport.bottom / tileSize).toInt()
     val columnStart = floor(viewport.left / tileSize).toInt()
@@ -137,7 +137,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
         if (column % sample != 0) {
           continue
         }
-        val tile = Tile()
+        val tile = KTile()
         tile.options = bitmapOptions
         tile.startColumn = column
         tile.startRow = row
