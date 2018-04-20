@@ -22,6 +22,9 @@ class Tile {
     const val TILE_SIZE = 256
   }
 
+  val cacheKey:String
+    get() = "$startRow:$startColumn:$sampleSize"
+
   val sampleSize:Int
     get() = options?.inSampleSize ?: 1
 
@@ -42,12 +45,19 @@ class Tile {
     destinationRect.bottom = destinationRect.top + (TILE_SIZE * sampleSize) - 20
   }
 
-  fun decode(context: Context) {
+  fun decode(context: Context, cache: Cache) {
     if (state != State.IDLE) {
       return
     }
     state = State.DECODING
     updateDestinationRect()
+    val cached = cache.get(cacheKey)
+    cached?.let {
+      Log.d("T", "got bitmap from memory cache")
+      bitmap = cached
+      state = State.DECODED
+      return
+    }
     val canvas = Canvas(bitmap)
     val size = TILE_SIZE / sampleSize.toFloat()
     for (i in 0 until sampleSize) {
@@ -66,6 +76,7 @@ class Tile {
         }
       }
     }
+    cache.put(cacheKey, bitmap)
     state = State.DECODED
   }
 
@@ -74,8 +85,12 @@ class Tile {
   }
 
   // TODO: we may want to actually comment this out and use memory addresses for equals, as this might be confusing things
-  override fun equals(other: Any?): Boolean = other is Tile && other.startColumn == startColumn && other.startRow == startRow
-
+  override fun equals(other: Any?): Boolean = other is Tile && other.startColumn == startColumn && other.startRow == startRow && other.sampleSize == sampleSize
   override fun hashCode() = Hashes.compute(17, 31, startColumn, startRow)
+
+  interface Cache {
+    fun get(key:Any):Bitmap?
+    fun put(key:Any, bitmap:Bitmap):Bitmap?
+  }
 
 }

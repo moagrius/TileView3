@@ -64,6 +64,8 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
   private val executor = Executors.newFixedThreadPool(3)
   private val renderThrottle = Throttler(10)
 
+  private val memoryCache = MemoryCache(((Runtime.getRuntime().maxMemory() / 1024) / 4).toInt())
+
   private val updateAndComputeTilesRunnable = Runnable {
     updateViewport()
     computeTilesInCurrentViewport()
@@ -155,7 +157,7 @@ class TileView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
       if (added) {
         executor.execute {
           try {
-            tile.decode(context)
+            tile.decode(context, memoryCache)
             postInvalidate()
           } catch (e: Exception) {
             Log.d("TV", "exception decoding: ${e.message}")
