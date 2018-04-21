@@ -64,6 +64,7 @@ public class Tile {
     }
     mState = State.DECODING;
     updateDestinationRect();
+    // try to get from memory first
     String cacheKey = getCacheKey();
     Bitmap cached = cache.get(cacheKey);
     if (cached != null) {
@@ -73,10 +74,26 @@ public class Tile {
       tileView.postInvalidate();
       return;
     }
-    // TODO: optimize for detail level 1
+    // TODO: do we need to check disk cache for remote images?
+    
+    // optimize for detail level 1
+    int sample = mOptions.inSampleSize;
+    if (sample == 1) {
+      Log.d("DL", "sample size one, use quick decode");
+      String file = String.format(Locale.US, FILE_TEMPLATE, mStartColumn, mStartRow);
+      InputStream stream = context.getAssets().open(file);
+      if (stream != null) {
+        bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
+        mState = State.DECODED;
+        tileView.postInvalidate();
+        return;
+      }
+    }
+    // now check disk cache - we don't need disk cache for level 1 because it's already on disk
+    // TODO: disk cache
+    // not top level, we need to patch together bitmaps
     Canvas canvas = new Canvas(bitmap);
     canvas.drawColor(mDefaultColor);
-    int sample = mOptions.inSampleSize;
     int size = TILE_SIZE / sample;
     for (int i = 0; i < sample; i++) {
       for (int j = 0; j < sample; j++) {
@@ -97,7 +114,6 @@ public class Tile {
     canvas.drawBitmap(bitmap, null, destinationRect, null);
   }
 
-  // TODO: this is not recognizing composite tiles correctly, so is over-aggressively redrawing
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof Tile) {
