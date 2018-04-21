@@ -104,6 +104,7 @@ public class Tile {
     // TODO: disk cache
 
     // do we have a special detail level?
+    // TODO: we should use the last detail level (e.g., 4) for pieces smaller levels (e.g., 8)
     String detail = getDetailLevel();
     if (detail != null) {
       Log.d("DL", "has detail level: " + detail);
