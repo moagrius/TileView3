@@ -175,6 +175,8 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
         tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
         tile.setStartRow(row);
+        // TODO: this seems like it should be somewhere else - e.g., only applied if necessary
+        tile.addDetailLevel(4, " tiles/phi-125000-%1$d_%2$d.jpg");
         mNewlyVisibleTiles.add(tile);
       }
     }

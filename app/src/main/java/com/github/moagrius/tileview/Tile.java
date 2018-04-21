@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.util.Log;
+import android.util.SparseArray;
 
 import com.github.moagrius.utils.Hashes;
 
@@ -30,6 +31,7 @@ public class Tile {
   private Bitmap bitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
   private Rect destinationRect = new Rect();
   private BitmapFactory.Options mOptions;
+  private SparseArray<String> mDetailLevels = new SparseArray<>();
 
   public void setDefaultColor(int color) {
     mDefaultColor = color;
@@ -47,6 +49,10 @@ public class Tile {
     mOptions = options;
   }
 
+  public void addDetailLevel(int position, String template) {
+    mDetailLevels.put(position, template);
+  }
+
   private void updateDestinationRect() {
     destinationRect.left = mStartColumn * TILE_SIZE;
     destinationRect.top = mStartRow * TILE_SIZE;
@@ -56,6 +62,10 @@ public class Tile {
 
   private String getCacheKey() {
     return mStartColumn + ":" + mStartRow + ":" + mOptions.inSampleSize;
+  }
+
+  private String getDetailLevel() {
+    return mDetailLevels.get(mOptions.inSampleSize);
   }
 
   public void decode(Context context, TileView.Cache cache, TileView tileView) throws Exception {
@@ -84,6 +94,7 @@ public class Tile {
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
         bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
+        cache.put(cacheKey, bitmap);
         mState = State.DECODED;
         tileView.postInvalidate();
         return;
@@ -91,6 +102,22 @@ public class Tile {
     }
     // now check disk cache - we don't need disk cache for level 1 because it's already on disk
     // TODO: disk cache
+
+    // do we have a special detail level?
+    String detail = getDetailLevel();
+    if (detail != null) {
+      Log.d("DL", "has detail level: " + detail);
+      String file = String.format(Locale.US, detail, mStartColumn, mStartRow);
+      InputStream stream = context.getAssets().open(file);
+      if (stream != null) {
+        Log.d("DL", "steam is not null, should be rendering");
+        bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
+        cache.put(cacheKey, bitmap);
+        mState = State.DECODED;
+        tileView.postInvalidate();
+        return;
+      }
+    }
     // not top level, we need to patch together bitmaps
     Canvas canvas = new Canvas(bitmap);
     canvas.drawColor(mDefaultColor);
@@ -111,7 +138,9 @@ public class Tile {
   }
 
   public void draw(Canvas canvas) {
-    canvas.drawBitmap(bitmap, null, destinationRect, null);
+    if (mState == State.DECODED) {
+      canvas.drawBitmap(bitmap, null, destinationRect, null);
+    }
   }
 
   @Override
