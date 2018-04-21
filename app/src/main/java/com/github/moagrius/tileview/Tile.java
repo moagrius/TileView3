@@ -23,12 +23,17 @@ public class Tile {
     IDLE, DECODING, DECODED
   }
 
+  private int mDefaultColor = Color.GRAY;
   private int mStartRow;
   private int mStartColumn;
   private State mState = State.IDLE;
   private Bitmap bitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
   private Rect destinationRect = new Rect();
   private BitmapFactory.Options mOptions;
+
+  public void setDefaultColor(int color) {
+    mDefaultColor = color;
+  }
 
   public void setStartRow(int startRow) {
     mStartRow = startRow;
@@ -53,7 +58,7 @@ public class Tile {
     return mStartColumn + ":" + mStartRow + ":" + mOptions.inSampleSize;
   }
 
-  public void decode(Context context, TileView.Cache cache) throws Exception {
+  public void decode(Context context, TileView.Cache cache, TileView tileView) throws Exception {
     if (mState != State.IDLE) {
       return;
     }
@@ -65,28 +70,27 @@ public class Tile {
       Log.d("T", "got bitmap from memory cache");
       bitmap = cached;
       mState = State.DECODED;
+      tileView.postInvalidate();
       return;
     }
+    // TODO: optimize for detail level 1
     Canvas canvas = new Canvas(bitmap);
-    canvas.drawColor(Color.GREEN);
+    canvas.drawColor(mDefaultColor);
     int sample = mOptions.inSampleSize;
     int size = TILE_SIZE / sample;
     for (int i = 0; i < sample; i++) {
       for (int j = 0; j < sample; j++) {
-        Log.d("G", "iterating i:$i, j:$j");
         String file = String.format(Locale.US, FILE_TEMPLATE, mStartColumn + j, mStartRow + i);
         InputStream stream = context.getAssets().open(file);
         if (stream != null) {
           Bitmap piece = BitmapFactory.decodeStream(stream, null, mOptions);
-          int left = j * size;
-          int top = i * size;
-          Log.d("G", "putting piece for $startRow:$startColumn at $left:$top");
-          canvas.drawBitmap(piece, left, top, null);
+          canvas.drawBitmap(piece, j * size, i * size, null);
         }
       }
     }
     cache.put(cacheKey, bitmap);
     mState = State.DECODED;
+    tileView.postInvalidate();
   }
 
   public void draw(Canvas canvas) {

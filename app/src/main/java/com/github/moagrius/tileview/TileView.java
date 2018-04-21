@@ -60,6 +60,8 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
 
   public TileView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
+    //int layerType = (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) ? LAYER_TYPE_SOFTWARE : LAYER_TYPE_HARDWARE;
+    //setLayerType(layerType, null);
   }
 
   @Override
@@ -135,27 +137,41 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
   }
 
   private void updateViewport() {
-    mViewport.set(
-        mZoomScrollView.getScrollX(),
-        mZoomScrollView.getScrollY(),
-        mZoomScrollView.getMeasuredWidth() + mZoomScrollView.getScrollX(),
-        mZoomScrollView.getMeasuredHeight() + mZoomScrollView.getScrollY()
-    );
+    int left = mZoomScrollView.getScrollX();
+    int top = mZoomScrollView.getScrollY();
+    int visibleRight = left + mZoomScrollView.getMeasuredWidth();
+    int visibleBottom = top + mZoomScrollView.getMeasuredHeight();
+    int actualRight = getWidth();
+    int actualBottom = getHeight();
+    int right = Math.min(visibleRight, actualRight);
+    int bottom = Math.min(visibleBottom, actualBottom);
+    mViewport.set(left, top, right, bottom);
+  }
+
+  public Grid getCellGridFromViewport() {
+    float tileSize = Tile.TILE_SIZE * mScale;
+    int sample = mBitmapOptions.inSampleSize;
+    // force rows and columns to be in increments equal to sample size...
+    // round down the start and round up the end to make sure we cover the screen
+    // e.g. rows 7:18 with sample size 4 become 4:20
+    // this is to make sure that the cells are recognized as whole units and not redrawn when the viewport moves by a distance smaller than a computed tile
+    Grid grid = new Grid();
+    grid.rows.start = (int) Math.floor((mViewport.top / tileSize) / sample) * sample;
+    grid.rows.end = (int) Math.ceil((mViewport.bottom / tileSize) / sample) * sample;
+    grid.columns.start = (int) Math.floor((mViewport.left / tileSize) / sample) * sample;
+    grid.columns.end = (int) Math.ceil((mViewport.right / tileSize) / sample) * sample;
+    return grid;
   }
 
   private void computeTilesInCurrentViewport() {
     mNewlyVisibleTiles.clear();
-    float tileSize = Tile.TILE_SIZE * mScale;
     int sample = mBitmapOptions.inSampleSize;
-
-    int rowStart = (int) Math.floor((mViewport.top / tileSize) / sample) * sample;
-    int rowEnd = (int) Math.ceil((mViewport.bottom / tileSize) / sample) * sample;
-    int columnStart = (int) Math.floor((mViewport.left / tileSize) / sample) * sample;
-    int columnEnd = (int) Math.ceil((mViewport.right / tileSize) / sample) * sample;
-    //Log.d("T", "$rowStart, $rowEnd, $columnStart, $columnEnd")
-    for (int row = rowStart; row < rowEnd; row += sample) {
-      for (int column = columnStart; column < columnEnd; column += sample) {
+    Grid grid = getCellGridFromViewport();
+    for (int row = grid.rows.start; row < grid.rows.end; row += sample) {
+      for (int column = grid.columns.start; column < grid.columns.end; column += sample) {
+        // TODO: recycle tiles
         Tile tile = new Tile();
+        tile.setDefaultColor(0xFFE7E7E7);
         tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
         tile.setStartRow(row);
@@ -175,8 +191,7 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
       if (added) {
         mExecutor.execute(() -> {
           try {
-            tile.decode(getContext(), mMemoryCache);
-            postInvalidate();
+            tile.decode(getContext(), mMemoryCache, this);
           } catch (Exception e) {
             Log.d("TV", "exception decoding: ${e.javaClass}, ${e.message}");
           }
@@ -185,6 +200,15 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
     }
   }
 
+  private static class Grid {
+    Range rows = new Range();
+    Range columns = new Range();
+  }
+
+  private static class Range {
+    int start;
+    int end;
+  }
 
   public interface Cache {
     Bitmap get(String key);
