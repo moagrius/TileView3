@@ -106,6 +106,7 @@ public class Tile {
     // do we have a special detail level?
     // TODO: we should use the last detail level (e.g., 4) for pieces smaller levels (e.g., 8)
     String detail = getDetailLevel();
+    Log.d("DL", "detail=" + detail);
     if (detail != null) {
       Log.d("DL", "has detail level: " + detail);
       String file = String.format(Locale.US, detail, mStartColumn, mStartRow);
