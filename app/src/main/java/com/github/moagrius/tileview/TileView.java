@@ -15,13 +15,17 @@ import com.github.moagrius.utils.Throttler;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class TileView extends View implements ZoomScrollView.ScaleChangedListener, ScrollView.ScrollChangedListener {
+public class TileView extends View implements
+    ZoomScrollView.ScaleChangedListener,
+    ScrollView.ScrollChangedListener,
+    Tile.DetailProvider {
 
   private BitmapFactory.Options mBitmapOptions = new BitmapFactory.Options();
 
@@ -33,6 +37,8 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
   }
 
   private float mScale = 1f;
+
+  private DetailList mDetailLevels = new DetailList();
 
   private ZoomScrollView mZoomScrollView;
 
@@ -100,8 +106,7 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
       current = next;
     }
     if (mBitmapOptions.inSampleSize != previous) {
-      Log.d("DL", "clearing tiles");
-      mTilesVisibleInViewport.clear();
+      onZoomChange(mBitmapOptions.inSampleSize, previous);
     }
     invalidate();
     Log.d("DL", "sample: " + mBitmapOptions.inSampleSize);
@@ -130,6 +135,20 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
     for (Tile tile : mTilesVisibleInViewport) {
       tile.draw(canvas);
     }
+  }
+
+  @Override
+  public DetailList getDetailList() {
+    return mDetailLevels;
+  }
+
+  public void addDetailLevel(int zoom, String template) {
+    mDetailLevels.set(zoom, template);
+  }
+
+  private void onZoomChange(int current, int preivous) {
+    Log.d("DL", "clearing tiles");
+    mTilesVisibleInViewport.clear();
   }
 
   private void updateViewportAndComputeTilesThrottled() {
@@ -175,8 +194,7 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
         tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
         tile.setStartRow(row);
-        // TODO: this seems like it should be somewhere else - e.g., only applied if necessary
-        tile.addDetailLevel(4, "tiles/phi-125000-%1$d_%2$d.jpg");
+        tile.setDetailProvider(this);
         mNewlyVisibleTiles.add(tile);
       }
     }
@@ -217,4 +235,15 @@ public class TileView extends View implements ZoomScrollView.ScaleChangedListene
     Bitmap put(String key, Bitmap value);
   }
 
+  public static class DetailList extends ArrayList<String> {
+    @Override
+    public String set(int index, String element) {
+      // fill with nulls
+      int delta = index - (size() - 1);
+      for (int i = 0; i < delta; i++) {
+        add(null);
+      }
+      return super.set(index, element);
+    }
+  }
 }

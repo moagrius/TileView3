@@ -7,13 +7,23 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.util.Log;
-import android.util.SparseArray;
 
 import com.github.moagrius.utils.Hashes;
+import com.github.moagrius.utils.Maths;
 
 import java.io.InputStream;
 import java.util.Locale;
 
+/**
+ * ZOOM     PERCENT     SCALE
+ * 1        100%        1
+ * 2        50%         2
+ * 3        25%         4
+ * 4        12.5%       8
+ * 5        6.25%       16
+ * 6        3.125%      32
+ * ...
+ */
 public class Tile {
 
   public static final int TILE_SIZE = 256;
@@ -27,11 +37,15 @@ public class Tile {
   private int mDefaultColor = Color.GRAY;
   private int mStartRow;
   private int mStartColumn;
+  private DetailProvider mDetailProvider;
   private State mState = State.IDLE;
   private Bitmap bitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
   private Rect destinationRect = new Rect();
   private BitmapFactory.Options mOptions;
-  private SparseArray<String> mDetailLevels = new SparseArray<>();
+
+  public void setDetailProvider(DetailProvider detailProvider) {
+    mDetailProvider = detailProvider;
+  }
 
   public void setDefaultColor(int color) {
     mDefaultColor = color;
@@ -49,10 +63,6 @@ public class Tile {
     mOptions = options;
   }
 
-  public void addDetailLevel(int position, String template) {
-    mDetailLevels.put(position, template);
-  }
-
   private void updateDestinationRect() {
     destinationRect.left = mStartColumn * TILE_SIZE;
     destinationRect.top = mStartRow * TILE_SIZE;
@@ -64,8 +74,8 @@ public class Tile {
     return mStartColumn + ":" + mStartRow + ":" + mOptions.inSampleSize;
   }
 
-  private String getDetailLevel() {
-    return mDetailLevels.get(mOptions.inSampleSize);
+  private int getZoomFromSample(int sample) {
+    return (int) (Maths.log2(sample) + 1);
   }
 
   public void decode(Context context, TileView.Cache cache, TileView tileView) throws Exception {
@@ -163,6 +173,10 @@ public class Tile {
   @Override
   public int hashCode() {
     return Hashes.compute(17, 31, mStartColumn, mStartRow, mOptions.inSampleSize);
+  }
+
+  public interface DetailProvider {
+    TileView.DetailList getDetailList();
   }
 
 }
