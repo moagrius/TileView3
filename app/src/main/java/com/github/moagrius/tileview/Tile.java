@@ -108,12 +108,16 @@ public class Tile {
     String detail = getDetailLevel();
     Log.d("DL", "detail=" + detail);
     if (detail != null) {
-      Log.d("DL", "has detail level: " + detail);
-      String file = String.format(Locale.US, detail, mStartColumn, mStartRow);
+      String file = String.format(Locale.US, detail, mStartColumn / sample, mStartRow / sample);
+      Log.d("DL", "has detail level, file is: " + file);
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
         Log.d("DL", "steam is not null, should be rendering");
-        bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
+        // TODO: optimize this somehow
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inTempStorage = mOptions.inTempStorage;
+        options.inPreferredConfig = mOptions.inPreferredConfig;
+        bitmap = BitmapFactory.decodeStream(stream, null, options);  // for spec'ed detail levels, don't downsample
         cache.put(cacheKey, bitmap);
         mState = State.DECODED;
         tileView.postInvalidate();
