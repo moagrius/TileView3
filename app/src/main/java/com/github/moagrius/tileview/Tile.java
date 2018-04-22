@@ -14,16 +14,7 @@ import com.github.moagrius.utils.Maths;
 import java.io.InputStream;
 import java.util.Locale;
 
-/**
- * ZOOM     PERCENT     SCALE
- * 1        100%        1
- * 2        50%         2
- * 3        25%         4
- * 4        12.5%       8
- * 5        6.25%       16
- * 6        3.125%      32
- * ...
- */
+
 public class Tile {
 
   public static final int TILE_SIZE = 256;
@@ -115,7 +106,10 @@ public class Tile {
 
     // do we have a special detail level?
     // TODO: we should use the last detail level (e.g., 4) for pieces smaller levels (e.g., 8)
-    String detail = getDetailLevel();
+    boolean atDetailLevel = false;
+    for (int i = 0; i < mDetailProvider.getDetailList().size(); i++) {
+
+    }
     Log.d("DL", "detail=" + detail);
     if (detail != null) {
       String file = String.format(Locale.US, detail, mStartColumn / sample, mStartRow / sample);
@@ -174,6 +168,7 @@ public class Tile {
   public int hashCode() {
     return Hashes.compute(17, 31, mStartColumn, mStartRow, mOptions.inSampleSize);
   }
+
 
   public interface DetailProvider {
     TileView.DetailList getDetailList();
