@@ -43,6 +43,11 @@ public class Detail {
   private int mZoom;
   private String mUri;
 
+  public Detail(int zoom, String uri) {
+    mZoom = zoom;
+    mUri = uri;
+  }
+
   public int getZoom() {
     return mZoom;
   }
@@ -58,5 +63,5 @@ public class Detail {
   public void setUri(String uri) {
     mUri = uri;
   }
-  
+
 }

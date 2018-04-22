@@ -107,7 +107,10 @@ public class Tile {
     // do we have a special detail level?
     // TODO: we should use the last detail level (e.g., 4) for pieces smaller levels (e.g., 8)
     boolean atDetailLevel = false;
-    for (int i = 0; i < mDetailProvider.getDetailList().size(); i++) {
+    int zoom = Detail.getZoomFromScale(sample);  // maybe set this from TileView instead of recomputing every time?
+    TileView.DetailList details = mDetailProvider.getDetailList();
+
+    for (int i = 0; i < details.size(); i++) {
 
     }
     Log.d("DL", "detail=" + detail);
