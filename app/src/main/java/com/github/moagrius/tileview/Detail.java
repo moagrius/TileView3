@@ -1,7 +1,7 @@
 package com.github.moagrius.tileview;
 
 /**
- * ZOOM     PERCENT     SCALE
+ * ZOOM     PERCENT     SAMPLE
  * 0        100%        1
  * 1        50%         2
  * 2        25%         4
@@ -20,20 +20,20 @@ public class Detail {
     return (10000 >> zoom) / 10000f;
   }
 
-  public static float getPercentFromScale(int scale) {
-    return 1 / (float) scale;
+  public static float getPercentFromSample(int sample) {
+    return 1 / (float) sample;
   }
 
-  public static int getScaleFromZoom(int zoom) {
+  public static int getSampleFromZoom(int zoom) {
     return 1 << zoom;
   }
 
-  public static float getScaleFromPercent(float percent) {
+  public static float getSampleFromPercent(float percent) {
     return 1 / percent;
   }
 
-  public static int getZoomFromScale(int scale) {
-    return (int) (Math.log(scale) / LOG_2);
+  public static int getZoomFromScale(int sample) {
+    return (int) (Math.log(sample) / LOG_2);
   }
 
   public static int getZoomFromPercent(float percent) {
@@ -41,27 +41,31 @@ public class Detail {
   }
 
   private int mZoom;
+  private int mSample;
+  private float mPercent;
   private String mUri;
 
   public Detail(int zoom, String uri) {
-    mZoom = zoom;
     mUri = uri;
-  }
-
-  public int getZoom() {
-    return mZoom;
-  }
-
-  public void setZoom(int zoom) {
     mZoom = zoom;
+    mSample = getSampleFromZoom(zoom);
+    mPercent = getPercentFromZoom(zoom);
   }
 
   public String getUri() {
     return mUri;
   }
 
-  public void setUri(String uri) {
-    mUri = uri;
+  public int getZoom() {
+    return mZoom;
+  }
+
+  public int getSample() {
+    return mSample;
+  }
+
+  public float getPercent() {
+    return mPercent;
   }
 
 }

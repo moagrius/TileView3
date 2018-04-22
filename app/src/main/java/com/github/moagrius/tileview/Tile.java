@@ -106,16 +106,11 @@ public class Tile {
 
     // do we have a special detail level?
     // TODO: we should use the last detail level (e.g., 4) for pieces smaller levels (e.g., 8)
-    boolean atDetailLevel = false;
-    int zoom = Detail.getZoomFromScale(sample);  // maybe set this from TileView instead of recomputing every time?
-    TileView.DetailList details = mDetailProvider.getDetailList();
-
-    for (int i = 0; i < details.size(); i++) {
-
-    }
+    Detail detail = mDetailProvider.getCurrentDetail();
     Log.d("DL", "detail=" + detail);
-    if (detail != null) {
-      String file = String.format(Locale.US, detail, mStartColumn / sample, mStartRow / sample);
+    // this is an exact match for the detail level
+    if (detail.getSample() == mOptions.inSampleSize) {
+      String file = String.format(Locale.US, detail.getUri(), mStartColumn / sample, mStartRow / sample);
       Log.d("DL", "has detail level, file is: " + file);
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
@@ -131,13 +126,14 @@ public class Tile {
         return;
       }
     }
-    // not top level, we need to patch together bitmaps
+    // not top level, we need to patch together bitmaps from the last known zoom level
+    sample = detail.getSample() - sample;
     Canvas canvas = new Canvas(bitmap);
     canvas.drawColor(mDefaultColor);
     int size = TILE_SIZE / sample;
     for (int i = 0; i < sample; i++) {
       for (int j = 0; j < sample; j++) {
-        String file = String.format(Locale.US, FILE_TEMPLATE, mStartColumn + j, mStartRow + i);
+        String file = String.format(Locale.US, detail.getUri(), mStartColumn + j, mStartRow + i);
         InputStream stream = context.getAssets().open(file);
         if (stream != null) {
           Bitmap piece = BitmapFactory.decodeStream(stream, null, mOptions);
@@ -172,9 +168,9 @@ public class Tile {
     return Hashes.compute(17, 31, mStartColumn, mStartRow, mOptions.inSampleSize);
   }
 
-
   public interface DetailProvider {
     TileView.DetailList getDetailList();
+    Detail getCurrentDetail();
   }
 
 }

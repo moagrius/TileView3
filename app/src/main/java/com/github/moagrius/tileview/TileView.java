@@ -39,6 +39,7 @@ public class TileView extends View implements
   private float mScale = 1f;
 
   private DetailList mDetailLevels = new DetailList();
+  private Detail mCurrentDetail;
 
   private ZoomScrollView mZoomScrollView;
 
@@ -97,6 +98,7 @@ public class TileView extends View implements
     mBitmapOptions.inSampleSize = 1;
     float current = 1f;
     float divisor = 2f;
+    // TODO: Detail.getZoomFromPercent?
     while (true) {
       float next = current / divisor;
       if (next < scale) {
@@ -106,7 +108,7 @@ public class TileView extends View implements
       current = next;
     }
     if (mBitmapOptions.inSampleSize != previous) {
-      onZoomChange(mBitmapOptions.inSampleSize, previous);
+      onSampleSizeChanged(mBitmapOptions.inSampleSize, previous);
     }
     invalidate();
     Log.d("DL", "sample: " + mBitmapOptions.inSampleSize);
@@ -129,6 +131,27 @@ public class TileView extends View implements
     updateViewportAndComputeTilesThrottled();
   }
 
+  private void onSampleSizeChanged(int current, int previous) {
+    Log.d("DL", "clearing tiles");
+    mTilesVisibleInViewport.clear();
+    determineCurrentDetail(current);
+  }
+
+  private void determineCurrentDetail(int sample) {
+    int zoom = Detail.getZoomFromScale(sample);
+    String template = mDetailLevels.get(zoom);  // do we have an exact match?
+    if (template != null) {
+      mCurrentDetail = new Detail(zoom, template);
+      return;
+    }
+    for (int i = zoom + 1; i < mDetailLevels.size(); i++) {
+      template = mDetailLevels.get(i);
+      if (template != null) {  // if it's defined
+        mCurrentDetail = new Detail(i, template);
+      }
+    }
+  }
+
   @Override
   protected void onDraw(Canvas canvas) {
     canvas.scale(mScale, mScale);
@@ -142,13 +165,18 @@ public class TileView extends View implements
     return mDetailLevels;
   }
 
-  public void addDetailLevel(int zoom, String template) {
-    mDetailLevels.set(zoom, template);
+  @Override
+  public Detail getCurrentDetail() {
+    return mCurrentDetail;
   }
 
-  private void onZoomChange(int current, int preivous) {
-    Log.d("DL", "clearing tiles");
-    mTilesVisibleInViewport.clear();
+  public void setBaseDetailLevel(String template) {
+    addDetailLevel(0, template);
+  }
+
+  public void addDetailLevel(int zoom, String template) {
+    mDetailLevels.set(zoom, template);
+    determineCurrentDetail(mBitmapOptions.inSampleSize);
   }
 
   private void updateViewportAndComputeTilesThrottled() {
