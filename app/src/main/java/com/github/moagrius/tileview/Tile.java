@@ -65,7 +65,7 @@ public class Tile {
   }
 
   private String getCacheKey() {
-    return mStartColumn + ":" + mStartRow + ":" + mOptions.inSampleSize;
+    return mStateProvider.getDetail().getUri() + ":" + mStartColumn + ":" + mStartRow + ":" + getSampleSize();
   }
 
   public void decode(Context context, TileView.Cache cache, TileView tileView) throws Exception {
@@ -123,24 +123,14 @@ public class Tile {
       }
     }
     Log.d("DLS", "patching bitmaps from last known detail");
-    // not top level, we need to patch together bitmaps from the last known zoom level
-    // so if we have a detail level defined for zoom level 1 (sample 2) but are on zoom level 2 (sample 4) we want an actual sample of 2
-    // similarly if we have definition for sample zoom 1 / sample 2 and are on zoom 3 / sample 8, we want actual sample of 4
-    int zoomDelta = mStateProvider.getZoom() - detail.getZoom();  // so defined 1 minus actual 2 = 1
-    int adjustedSampleSize = detail.getSample() << zoomDelta;
-    Log.d("DLS", "zoom delta: " + zoomDelta + ", adjusted sample: " + adjustedSampleSize);
-    destinationRect.right = destinationRect.left + (TILE_SIZE * adjustedSampleSize);
-    destinationRect.bottom = destinationRect.top + (TILE_SIZE * adjustedSampleSize);
     Canvas canvas = new Canvas(bitmap);
     canvas.drawColor(mDefaultColor);
-    int size = TILE_SIZE / adjustedSampleSize;
+    int size = TILE_SIZE / getSampleSize();
     BitmapFactory.Options options = new TileOptions();
-    options.inSampleSize = adjustedSampleSize;
-    int c = mStartColumn / adjustedSampleSize;
-    int r = mStartRow / adjustedSampleSize;
-    for (int i = 0; i < adjustedSampleSize; i++) {
-      for (int j = 0; j < adjustedSampleSize; j++) {
-        String file = String.format(Locale.US, detail.getUri(), c + j, r + i);
+    options.inSampleSize = getSampleSize();
+    for (int i = 0; i < getSampleSize(); i++) {
+      for (int j = 0; j < getSampleSize(); j++) {
+        String file = String.format(Locale.US, detail.getUri(), mStartColumn + j, mStartRow + i);
         InputStream stream = context.getAssets().open(file);
         if (stream != null) {
           Bitmap piece = BitmapFactory.decodeStream(stream, null, options);

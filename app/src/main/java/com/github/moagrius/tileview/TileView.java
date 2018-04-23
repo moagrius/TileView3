@@ -141,6 +141,11 @@ public class TileView extends View implements
         mCurrentDetail = new Detail(i, template);
       }
     }
+    // not top level, we need to patch together bitmaps from the last known zoom level
+    // so if we have a detail level defined for zoom level 1 (sample 2) but are on zoom level 2 (sample 4) we want an actual sample of 2
+    // similarly if we have definition for sample zoom 1 / sample 2 and are on zoom 3 / sample 8, we want actual sample of 4
+    int zoomDelta = mZoom - mCurrentDetail.getZoom();  // so defined 1 minus actual 2 = 1
+    mSample = mCurrentDetail.getSample() << zoomDelta;
   }
 
   @Override
