@@ -9,7 +9,6 @@ import android.graphics.Rect;
 import android.util.Log;
 
 import com.github.moagrius.utils.Hashes;
-import com.github.moagrius.utils.Maths;
 
 import java.io.InputStream;
 import java.util.Locale;
@@ -28,14 +27,14 @@ public class Tile {
   private int mDefaultColor = Color.GRAY;
   private int mStartRow;
   private int mStartColumn;
-  private DetailProvider mDetailProvider;
+  private StateProvider mStateProvider;
   private State mState = State.IDLE;
   private Bitmap bitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
   private Rect destinationRect = new Rect();
   private BitmapFactory.Options mOptions;
 
-  public void setDetailProvider(DetailProvider detailProvider) {
-    mDetailProvider = detailProvider;
+  public void setStateProvider(StateProvider stateProvider) {
+    mStateProvider = stateProvider;
   }
 
   public void setDefaultColor(int color) {
@@ -55,7 +54,7 @@ public class Tile {
   }
 
   public int getSampleSize() {
-    return mDetailProvider == null ? 1 : mDetailProvider.getCurrentSample();
+    return mStateProvider == null ? 1 : mStateProvider.getSample();
   }
 
   private void updateDestinationRect() {
@@ -67,10 +66,6 @@ public class Tile {
 
   private String getCacheKey() {
     return mStartColumn + ":" + mStartRow + ":" + mOptions.inSampleSize;
-  }
-
-  private int getZoomFromSample(int sample) {
-    return (int) (Maths.log2(sample) + 1);
   }
 
   public void decode(Context context, TileView.Cache cache, TileView tileView) throws Exception {
@@ -90,7 +85,7 @@ public class Tile {
       return;
     }
     // TODO: do we need to check disk cache for remote images?
-    String template = mDetailProvider.getCurrentDetail().getUri();
+    String template = mStateProvider.getDetail().getUri();
     // optimize for detail level 1
     if (getSampleSize() == 1) {
       Log.d("DL", "sample size one, use quick decode");
@@ -109,7 +104,7 @@ public class Tile {
 
     // do we have a special detail level?
     // TODO: we should use the last detail level (e.g., 4) for pieces smaller levels (e.g., 8)
-    Detail detail = mDetailProvider.getCurrentDetail();
+    Detail detail = mStateProvider.getDetail();
     Log.d("DLS", "detail.sample=" + detail.getSample() + ", actual sample=" + getSampleSize());
     // this is an exact match for the detail level
     if (detail.getSample() == getSampleSize()) {
@@ -131,9 +126,11 @@ public class Tile {
     // not top level, we need to patch together bitmaps from the last known zoom level
     // so if we have a detail level defined for zoom level 1 (sample 2) but are on zoom level 2 (sample 4) we want an actual sample of 2
     // similarly if we have definition for sample zoom 1 / sample 2 and are on zoom 3 / sample 8, we want actual sample of 4
-    int zoomDelta = detail.getZoom() - mDetailProvider.getCurrentZoom();  // so defined 1 minus actual 2 = 1
+    int zoomDelta = mStateProvider.getZoom() - detail.getZoom();  // so defined 1 minus actual 2 = 1
     int adjustedSampleSize = detail.getSample() << zoomDelta;
-    Log.d("DLS", "zoom detla: " + zoomDelta + ", adjusted sample: " + adjustedSampleSize);
+    Log.d("DLS", "zoom delta: " + zoomDelta + ", adjusted sample: " + adjustedSampleSize);
+    destinationRect.right = destinationRect.left + (TILE_SIZE * adjustedSampleSize);
+    destinationRect.bottom = destinationRect.top + (TILE_SIZE * adjustedSampleSize);
     Canvas canvas = new Canvas(bitmap);
     canvas.drawColor(mDefaultColor);
     int size = TILE_SIZE / adjustedSampleSize;
@@ -178,10 +175,10 @@ public class Tile {
     return Hashes.compute(17, 31, mStartColumn, mStartRow, mOptions.inSampleSize);
   }
 
-  public interface DetailProvider {
-    Detail getCurrentDetail();
-    int getCurrentZoom();
-    int getCurrentSample();
+  public interface StateProvider {
+    Detail getDetail();
+    int getZoom();
+    int getSample();
   }
 
 }

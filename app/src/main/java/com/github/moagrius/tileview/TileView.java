@@ -24,8 +24,7 @@ import java.util.concurrent.Executors;
 
 public class TileView extends View implements
     ZoomScrollView.ScaleChangedListener,
-    ScrollView.ScrollChangedListener,
-    Tile.DetailProvider {
+    ScrollView.ScrollChangedListener, Tile.StateProvider {
 
   private BitmapFactory.Options mBitmapOptions = new TileOptions();
 
@@ -115,12 +114,12 @@ public class TileView extends View implements
   }
 
   @Override
-  public int getCurrentZoom() {
+  public int getZoom() {
     return mZoom;
   }
 
   @Override
-  public int getCurrentSample() {
+  public int getSample() {
     return mSample;
   }
 
@@ -153,7 +152,7 @@ public class TileView extends View implements
   }
 
   @Override
-  public Detail getCurrentDetail() {
+  public Detail getDetail() {
     return mCurrentDetail;
   }
 
@@ -208,7 +207,7 @@ public class TileView extends View implements
         tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
         tile.setStartRow(row);
-        tile.setDetailProvider(this);
+        tile.setStateProvider(this);
         mNewlyVisibleTiles.add(tile);
       }
     }
