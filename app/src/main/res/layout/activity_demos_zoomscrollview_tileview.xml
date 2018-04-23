@@ -6,8 +6,8 @@
 
   <com.github.moagrius.tileview.TileView
     android:id="@+id/tileview"
-    android:layout_width="8967px"
-    android:layout_height="6726px"
+    android:layout_width="17934px"
+    android:layout_height="13452px"
     android:background="#FFe7e7e7"/>
 
 </com.github.moagrius.widget.ZoomScrollView>

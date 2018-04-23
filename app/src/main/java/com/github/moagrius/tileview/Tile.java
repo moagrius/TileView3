@@ -76,6 +76,7 @@ public class Tile {
     updateDestinationRect();
     // try to get from memory first
     String cacheKey = getCacheKey();
+        /*
     Bitmap cached = cache.get(cacheKey);
     if (cached != null) {
       Log.d("T", "got bitmap from memory cache");
@@ -84,6 +85,7 @@ public class Tile {
       tileView.postInvalidate();
       return;
     }
+    */
     // TODO: do we need to check disk cache for remote images?
     String template = mStateProvider.getDetail().getUri();
     // optimize for detail level 1
@@ -93,7 +95,7 @@ public class Tile {
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
         bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
-        cache.put(cacheKey, bitmap);
+        //cache.put(cacheKey, bitmap);
         mState = State.DECODED;
         tileView.postInvalidate();
         return;
@@ -116,7 +118,7 @@ public class Tile {
         // TODO: optimize this somehow
         BitmapFactory.Options options = new TileOptions();
         bitmap = BitmapFactory.decodeStream(stream, null, options);  // for spec'ed detail levels, don't downsample
-        cache.put(cacheKey, bitmap);
+        //cache.put(cacheKey, bitmap);
         mState = State.DECODED;
         tileView.postInvalidate();
         return;
@@ -138,7 +140,7 @@ public class Tile {
         }
       }
     }
-    cache.put(cacheKey, bitmap);
+    //cache.put(cacheKey, bitmap);
     mState = State.DECODED;
     tileView.postInvalidate();
   }
