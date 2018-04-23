@@ -11,11 +11,11 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
 
+import com.github.moagrius.utils.Maths;
 import com.github.moagrius.utils.Throttler;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -27,16 +27,12 @@ public class TileView extends View implements
     ScrollView.ScrollChangedListener,
     Tile.DetailProvider {
 
-  private BitmapFactory.Options mBitmapOptions = new BitmapFactory.Options();
-
-  {
-    //https://developer.android.com/reference/android/graphics/BitmapFactory.Options.html#inTempStorage
-    mBitmapOptions.inPreferredConfig = Bitmap.Config.RGB_565;
-    mBitmapOptions.inTempStorage = new byte[16 * 1024];
-    mBitmapOptions.inSampleSize = 1;
-  }
+  private BitmapFactory.Options mBitmapOptions = new TileOptions();
 
   private float mScale = 1f;
+  // cache zoom and sample from scale
+  private int mZoom;
+  private int mSample;
 
   private DetailList mDetailLevels = new DetailList();
   private Detail mCurrentDetail;
@@ -67,8 +63,6 @@ public class TileView extends View implements
 
   public TileView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
-    //int layerType = (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) ? LAYER_TYPE_SOFTWARE : LAYER_TYPE_HARDWARE;
-    //setLayerType(layerType, null);
   }
 
   @Override
@@ -92,26 +86,15 @@ public class TileView extends View implements
   }
 
   public void setScale(float scale) {
+    int previousZoom = mZoom;
     mScale = scale;
-    Log.d("DL", "setting scale: " + scale);
-    int previous = mBitmapOptions.inSampleSize;
-    mBitmapOptions.inSampleSize = 1;
-    float current = 1f;
-    float divisor = 2f;
-    // TODO: Detail.getZoomFromPercent?
-    while (true) {
-      float next = current / divisor;
-      if (next < scale) {
-        break;
-      }
-      mBitmapOptions.inSampleSize <<= 1;
-      current = next;
-    }
-    if (mBitmapOptions.inSampleSize != previous) {
-      onSampleSizeChanged(mBitmapOptions.inSampleSize, previous);
+    mZoom = Detail.getZoomFromPercent(mScale);
+    mSample = Detail.getSampleFromPercent(mScale);
+    Log.d("DLS", "setting zoom to " + mZoom);
+    if (mZoom != previousZoom) {
+      onZoomChanged(mZoom, previousZoom);
     }
     invalidate();
-    Log.d("DL", "sample: " + mBitmapOptions.inSampleSize);
   }
 
   @Override
@@ -131,20 +114,29 @@ public class TileView extends View implements
     updateViewportAndComputeTilesThrottled();
   }
 
-  private void onSampleSizeChanged(int current, int previous) {
-    Log.d("DL", "clearing tiles");
-    mTilesVisibleInViewport.clear();
-    determineCurrentDetail(current);
+  @Override
+  public int getCurrentZoom() {
+    return mZoom;
   }
 
-  private void determineCurrentDetail(int sample) {
-    int zoom = Detail.getZoomFromScale(sample);
-    String template = mDetailLevels.get(zoom);  // do we have an exact match?
+  @Override
+  public int getCurrentSample() {
+    return mSample;
+  }
+
+  private void onZoomChanged(int current, int previous) {
+    Log.d("DL", "clearing tiles");
+    mTilesVisibleInViewport.clear();
+    determineCurrentDetail();
+  }
+
+  private void determineCurrentDetail() {
+    String template = mDetailLevels.get(mZoom);  // do we have an exact match?
     if (template != null) {
-      mCurrentDetail = new Detail(zoom, template);
+      mCurrentDetail = new Detail(mZoom, template);
       return;
     }
-    for (int i = zoom + 1; i < mDetailLevels.size(); i++) {
+    for (int i = 0; i < mZoom; i++) {
       template = mDetailLevels.get(i);
       if (template != null) {  // if it's defined
         mCurrentDetail = new Detail(i, template);
@@ -161,22 +153,18 @@ public class TileView extends View implements
   }
 
   @Override
-  public DetailList getDetailList() {
-    return mDetailLevels;
-  }
-
-  @Override
   public Detail getCurrentDetail() {
     return mCurrentDetail;
   }
 
+  // TODO: abstract this, new strategy entirely
   public void setBaseDetailLevel(String template) {
     addDetailLevel(0, template);
   }
 
   public void addDetailLevel(int zoom, String template) {
     mDetailLevels.set(zoom, template);
-    determineCurrentDetail(mBitmapOptions.inSampleSize);
+    determineCurrentDetail();
   }
 
   private void updateViewportAndComputeTilesThrottled() {
@@ -184,29 +172,27 @@ public class TileView extends View implements
   }
 
   private void updateViewport() {
-    int left = mZoomScrollView.getScrollX();
-    int top = mZoomScrollView.getScrollY();
-    int visibleRight = left + mZoomScrollView.getMeasuredWidth();
-    int visibleBottom = top + mZoomScrollView.getMeasuredHeight();
+    mViewport.left = mZoomScrollView.getScrollX();
+    mViewport.top = mZoomScrollView.getScrollY();
+    int visibleRight = mViewport.left + mZoomScrollView.getMeasuredWidth();
+    int visibleBottom = mViewport.top + mZoomScrollView.getMeasuredHeight();
     int actualRight = getWidth();
     int actualBottom = getHeight();
-    int right = Math.min(visibleRight, actualRight);
-    int bottom = Math.min(visibleBottom, actualBottom);
-    mViewport.set(left, top, right, bottom);
+    mViewport.right = Math.min(visibleRight, actualRight);
+    mViewport.bottom = Math.min(visibleBottom, actualBottom);
   }
 
   public Grid getCellGridFromViewport() {
     float tileSize = Tile.TILE_SIZE * mScale;
-    int sample = mBitmapOptions.inSampleSize;
     // force rows and columns to be in increments equal to sample size...
     // round down the start and round up the end to make sure we cover the screen
     // e.g. rows 7:18 with sample size 4 become 4:20
     // this is to make sure that the cells are recognized as whole units and not redrawn when the viewport moves by a distance smaller than a computed tile
     Grid grid = new Grid();
-    grid.rows.start = (int) Math.floor((mViewport.top / tileSize) / sample) * sample;
-    grid.rows.end = (int) Math.ceil((mViewport.bottom / tileSize) / sample) * sample;
-    grid.columns.start = (int) Math.floor((mViewport.left / tileSize) / sample) * sample;
-    grid.columns.end = (int) Math.ceil((mViewport.right / tileSize) / sample) * sample;
+    grid.rows.start = Maths.roundDownWithStep(mViewport.top / tileSize, mSample);
+    grid.rows.end = Maths.roundUpWithStep(mViewport.bottom / tileSize, mSample);
+    grid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mSample);
+    grid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mSample);
     return grid;
   }
 
@@ -251,11 +237,10 @@ public class TileView extends View implements
   private static class Grid {
     Range rows = new Range();
     Range columns = new Range();
-  }
-
-  private static class Range {
-    int start;
-    int end;
+    private static class Range {
+      int start;
+      int end;
+    }
   }
 
   public interface Cache {
@@ -263,15 +248,4 @@ public class TileView extends View implements
     Bitmap put(String key, Bitmap value);
   }
 
-  public static class DetailList extends ArrayList<String> {
-    @Override
-    public String set(int index, String element) {
-      // fill with nulls
-      int delta = index - (size() - 1);
-      for (int i = 0; i < delta; i++) {
-        add(null);
-      }
-      return super.set(index, element);
-    }
-  }
 }

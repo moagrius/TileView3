@@ -1,5 +1,7 @@
 package com.github.moagrius.tileview;
 
+import com.github.moagrius.utils.Maths;
+
 /**
  * ZOOM     PERCENT     SAMPLE
  * 0        100%        1
@@ -12,8 +14,6 @@ package com.github.moagrius.tileview;
  */
 
 public class Detail {
-
-  private static final double LOG_2 = Math.log(2);
 
   // round to 5 digits
   public static float getPercentFromZoom(int zoom) {
@@ -28,16 +28,16 @@ public class Detail {
     return 1 << zoom;
   }
 
-  public static float getSampleFromPercent(float percent) {
-    return 1 / percent;
+  public static int getSampleFromPercent(float percent) {
+    return (int) (1 / percent);
   }
 
   public static int getZoomFromScale(int sample) {
-    return (int) (Math.log(sample) / LOG_2);
+    return (int) Maths.log2(sample);
   }
 
   public static int getZoomFromPercent(float percent) {
-    return (int) (Math.log(1 / percent) / LOG_2);
+    return (int) Maths.log2((int) (1 / percent));
   }
 
   private int mZoom;

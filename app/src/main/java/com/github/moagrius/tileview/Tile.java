@@ -54,11 +54,15 @@ public class Tile {
     mOptions = options;
   }
 
+  public int getSampleSize() {
+    return mDetailProvider == null ? 1 : mDetailProvider.getCurrentSample();
+  }
+
   private void updateDestinationRect() {
     destinationRect.left = mStartColumn * TILE_SIZE;
     destinationRect.top = mStartRow * TILE_SIZE;
-    destinationRect.right = destinationRect.left + (TILE_SIZE * mOptions.inSampleSize);
-    destinationRect.bottom = destinationRect.top + (TILE_SIZE * mOptions.inSampleSize);
+    destinationRect.right = destinationRect.left + (TILE_SIZE * getSampleSize());
+    destinationRect.bottom = destinationRect.top + (TILE_SIZE * getSampleSize());
   }
 
   private String getCacheKey() {
@@ -86,12 +90,11 @@ public class Tile {
       return;
     }
     // TODO: do we need to check disk cache for remote images?
-    
+    String template = mDetailProvider.getCurrentDetail().getUri();
     // optimize for detail level 1
-    int sample = mOptions.inSampleSize;
-    if (sample == 1) {
+    if (getSampleSize() == 1) {
       Log.d("DL", "sample size one, use quick decode");
-      String file = String.format(Locale.US, FILE_TEMPLATE, mStartColumn, mStartRow);
+      String file = String.format(Locale.US, template, mStartColumn, mStartRow);
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
         bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
@@ -107,18 +110,16 @@ public class Tile {
     // do we have a special detail level?
     // TODO: we should use the last detail level (e.g., 4) for pieces smaller levels (e.g., 8)
     Detail detail = mDetailProvider.getCurrentDetail();
-    Log.d("DL", "detail=" + detail);
+    Log.d("DLS", "detail.sample=" + detail.getSample() + ", actual sample=" + getSampleSize());
     // this is an exact match for the detail level
-    if (detail.getSample() == mOptions.inSampleSize) {
-      String file = String.format(Locale.US, detail.getUri(), mStartColumn / sample, mStartRow / sample);
+    if (detail.getSample() == getSampleSize()) {
+      String file = String.format(Locale.US, template, mStartColumn / getSampleSize(), mStartRow / getSampleSize());
       Log.d("DL", "has detail level, file is: " + file);
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
-        Log.d("DL", "steam is not null, should be rendering");
+        Log.d("DL", "stream is not null, should be rendering");
         // TODO: optimize this somehow
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inTempStorage = mOptions.inTempStorage;
-        options.inPreferredConfig = mOptions.inPreferredConfig;
+        BitmapFactory.Options options = new TileOptions();
         bitmap = BitmapFactory.decodeStream(stream, null, options);  // for spec'ed detail levels, don't downsample
         cache.put(cacheKey, bitmap);
         mState = State.DECODED;
@@ -126,17 +127,26 @@ public class Tile {
         return;
       }
     }
+    Log.d("DLS", "patching bitmaps from last known detail");
     // not top level, we need to patch together bitmaps from the last known zoom level
-    sample = detail.getSample() - sample;
+    // so if we have a detail level defined for zoom level 1 (sample 2) but are on zoom level 2 (sample 4) we want an actual sample of 2
+    // similarly if we have definition for sample zoom 1 / sample 2 and are on zoom 3 / sample 8, we want actual sample of 4
+    int zoomDelta = detail.getZoom() - mDetailProvider.getCurrentZoom();  // so defined 1 minus actual 2 = 1
+    int adjustedSampleSize = detail.getSample() << zoomDelta;
+    Log.d("DLS", "zoom detla: " + zoomDelta + ", adjusted sample: " + adjustedSampleSize);
     Canvas canvas = new Canvas(bitmap);
     canvas.drawColor(mDefaultColor);
-    int size = TILE_SIZE / sample;
-    for (int i = 0; i < sample; i++) {
-      for (int j = 0; j < sample; j++) {
-        String file = String.format(Locale.US, detail.getUri(), mStartColumn + j, mStartRow + i);
+    int size = TILE_SIZE / adjustedSampleSize;
+    BitmapFactory.Options options = new TileOptions();
+    options.inSampleSize = adjustedSampleSize;
+    int c = mStartColumn / adjustedSampleSize;
+    int r = mStartRow / adjustedSampleSize;
+    for (int i = 0; i < adjustedSampleSize; i++) {
+      for (int j = 0; j < adjustedSampleSize; j++) {
+        String file = String.format(Locale.US, detail.getUri(), c + j, r + i);
         InputStream stream = context.getAssets().open(file);
         if (stream != null) {
-          Bitmap piece = BitmapFactory.decodeStream(stream, null, mOptions);
+          Bitmap piece = BitmapFactory.decodeStream(stream, null, options);
           canvas.drawBitmap(piece, j * size, i * size, null);
         }
       }
@@ -169,8 +179,9 @@ public class Tile {
   }
 
   public interface DetailProvider {
-    TileView.DetailList getDetailList();
     Detail getCurrentDetail();
+    int getCurrentZoom();
+    int getCurrentSample();
   }
 
 }

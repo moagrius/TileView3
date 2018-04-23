@@ -8,4 +8,16 @@ public class Maths {
     return Math.log(n) / LOG_2;
   }
 
+  public static int roundWithStep(float value, int step) {
+    return Math.round(value / step) * step;
+  }
+
+  public static int roundUpWithStep(float value, int step) {
+    return (int) Math.ceil(value / step) * step;
+  }
+
+  public static int roundDownWithStep(float value, int step) {
+    return (int) Math.floor(value / step) * step;
+  }
+
 }
