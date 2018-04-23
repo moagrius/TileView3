@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.util.Log;
 
@@ -98,8 +99,8 @@ public class Tile {
         //cache.put(cacheKey, bitmap);
         mState = State.DECODED;
         tileView.postInvalidate();
-        return;
       }
+      return;
     }
     // now check disk cache - we don't need disk cache for level 1 because it's already on disk
     // TODO: disk cache
@@ -117,12 +118,13 @@ public class Tile {
         Log.d("DL", "stream is not null, should be rendering");
         // TODO: optimize this somehow
         BitmapFactory.Options options = new TileOptions();
+        options.inSampleSize = getSampleSize();
         bitmap = BitmapFactory.decodeStream(stream, null, options);  // for spec'ed detail levels, don't downsample
         //cache.put(cacheKey, bitmap);
         mState = State.DECODED;
         tileView.postInvalidate();
-        return;
       }
+      return;
     }
     Log.d("DLS", "patching bitmaps from last known detail");
     Canvas canvas = new Canvas(bitmap);
@@ -145,9 +147,14 @@ public class Tile {
     tileView.postInvalidate();
   }
 
+  // TODO: DEBUG
+  Paint mAlphaPaint = new Paint();
+  {
+    mAlphaPaint.setAlpha(100);
+  }
   public void draw(Canvas canvas) {
     if (mState == State.DECODED) {
-      canvas.drawBitmap(bitmap, null, destinationRect, null);
+      canvas.drawBitmap(bitmap, null, destinationRect, mAlphaPaint);
     }
   }
 
