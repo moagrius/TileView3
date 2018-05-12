@@ -20,4 +20,11 @@ public class Maths {
     return (int) Math.floor(value / step) * step;
   }
 
+  public static float divideSafely(int dividend, float divisor) {
+    if (dividend == 0 || divisor == 0) {
+      return 0;
+    }
+    return dividend / divisor;
+  }
+
 }
