@@ -23,17 +23,18 @@ import java.util.concurrent.Executors;
 
 public class TileView extends View implements
     ZoomScrollView.ScaleChangedListener,
-    ScrollView.ScrollChangedListener, Tile.StateProvider {
+    ScrollView.ScrollChangedListener,
+    Tile.StateProvider {
 
   private BitmapFactory.Options mBitmapOptions = new TileOptions();
 
   private float mScale = 1f;
-  // cache zoom and sample from scale
   private int mZoom = 0;
+  // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
   private int mSample = 1;
 
   private DetailList mDetailLevels = new DetailList();
-  private Detail mCurrentDetail;
+  private Detail mLastValidDetail;
 
   private ZoomScrollView mZoomScrollView;
 
@@ -88,7 +89,6 @@ public class TileView extends View implements
     int previousZoom = mZoom;
     mScale = scale;
     mZoom = Detail.getZoomFromPercent(mScale);
-    mSample = Detail.getSampleFromPercent(mScale);
     Log.d("DLS", "setting zoom to " + mZoom);
     if (mZoom != previousZoom) {
       onZoomChanged(mZoom, previousZoom);
@@ -130,29 +130,37 @@ public class TileView extends View implements
   }
 
   private void determineCurrentDetail() {
-    // TODO: temp, debug only detail levels
+    // if zoom from scale is greater than the number of defined detail levels, we definitely don't have it
     if (mZoom >= mDetailLevels.size()) {
+      mLastValidDetail = mDetailLevels.getHighestDefined();
+      int zoomDelta = mZoom - mLastValidDetail.getZoom();
+      mSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
       return;
     }
-    String template = mDetailLevels.get(mZoom);  // do we have an exact match?
-    if (template != null) {
-      mCurrentDetail = new Detail(mZoom, template);
+    // if it's an exact match, use that and set sample to 1
+    Detail exactMatch = mDetailLevels.get(mZoom);  // do we have an exact match?
+    if (exactMatch != null) {
+      mLastValidDetail = exactMatch;
+      mSample = mBitmapOptions.inSampleSize = 1;
       return;
     }
-    /*
+    // so it's not bigger than what we have defined, but we don't have an exact match
+    // use the closest one from the "largest" (most zoomed-in)
     for (int i = 0; i < mZoom; i++) {
-      template = mDetailLevels.get(i);
-      if (template != null) {  // if it's defined
-        mCurrentDetail = new Detail(i, template);
+      Detail current = mDetailLevels.get(i);
+      if (current != null) {  // if it's defined
+        mLastValidDetail = current;
+        int zoomDelta = mZoom - mLastValidDetail.getZoom();
+        mSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
       }
     }
     // not top level, we need to patch together bitmaps from the last known zoom level
     // so if we have a detail level defined for zoom level 1 (sample 2) but are on zoom level 2 (sample 4) we want an actual sample of 2
     // similarly if we have definition for sample zoom 1 / sample 2 and are on zoom 3 / sample 8, we want actual sample of 4
-    int zoomDelta = mZoom - mCurrentDetail.getZoom();  // so defined 1 minus actual 2 = 1
-    Log.d("TV", "last sample = " + mCurrentDetail.getSample() + ", zoomDelta = " + zoomDelta);
-    mSample = mCurrentDetail.getSample() << zoomDelta;
-    */
+    //int zoomDelta = mZoom - mLastValidDetail.getZoom();  // so defined 1 minus actual 2 = 1
+    //Log.d("TV", "last sample = " + mLastValidDetail.getSample() + ", zoomDelta = " + zoomDelta);
+    //mSample = mLastValidDetail.getSample() << zoomDelta;
+    //mSample = 1 << zoomDelta;
   }
 
   @Override
@@ -165,7 +173,7 @@ public class TileView extends View implements
 
   @Override
   public Detail getDetail() {
-    return mCurrentDetail;
+    return mLastValidDetail;
   }
 
   // TODO: abstract this, new strategy entirely
@@ -174,7 +182,7 @@ public class TileView extends View implements
   }
 
   public void addDetailLevel(int zoom, String template) {
-    mDetailLevels.set(zoom, template);
+    mDetailLevels.set(zoom, new Detail(zoom, template));
     determineCurrentDetail();
   }
 
@@ -213,8 +221,8 @@ public class TileView extends View implements
   private void computeTilesInCurrentViewport() {
     mNewlyVisibleTiles.clear();
     Grid grid = getCellGridFromViewport();
-    for (int row = grid.rows.start; row < grid.rows.end; row++) {
-      for (int column = grid.columns.start; column < grid.columns.end; column++) {
+    for (int row = grid.rows.start; row < grid.rows.end; row += mSample) {
+      for (int column = grid.columns.start; column < grid.columns.end; column += mSample) {
         // TODO: recycle tiles
         Tile tile = new Tile();
         tile.setDefaultColor(0xFFE7E7E7);

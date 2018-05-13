@@ -7,7 +7,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.util.Log;
 
 import com.github.moagrius.utils.Hashes;
 
@@ -89,10 +88,10 @@ public class Tile {
     }
     */
     // TODO: do we need to check disk cache for remote images?
-    String template = mStateProvider.getDetail().getUri();
+    Detail detail = mStateProvider.getDetail();
+    String template = detail.getUri();
     // optimize for detail level 1
-    if (getSampleSize() == 1) {
-      Log.d("DL", "sample size one, use quick decode");
+    //if (getSampleSize() == 1) {
       String file = String.format(Locale.US, template, mStartColumn, mStartRow);
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
@@ -102,31 +101,12 @@ public class Tile {
         tileView.postInvalidate();
       }
       return;
-    }
+    //}
+    // use last known detail
+
     // now check disk cache - we don't need disk cache for level 1 because it's already on disk
     // TODO: disk cache
 
-    // do we have a special detail level?
-    // TODO: we should use the last detail level (e.g., 4) for pieces smaller levels (e.g., 8)
-    Detail detail = mStateProvider.getDetail();
-    Log.d("DLS", "detail.sample=" + detail.getSample() + ", actual sample=" + getSampleSize());
-    // this is an exact match for the detail level
-    if (detail.getSample() == getSampleSize()) {
-      String file = String.format(Locale.US, template, mStartColumn, mStartRow);
-      Log.d("DL", "has detail level, file is: " + file);
-      InputStream stream = context.getAssets().open(file);
-      if (stream != null) {
-        Log.d("DL", "stream is not null, should be rendering");
-        // TODO: optimize this somehow
-        BitmapFactory.Options options = new TileOptions();
-        //options.inSampleSize = getSampleSize();
-        bitmap = BitmapFactory.decodeStream(stream, null, options);  // for spec'ed detail levels, don't downsample
-        //cache.put(cacheKey, bitmap);
-        mState = State.DECODED;
-        tileView.postInvalidate();
-      }
-      return;
-    }
     /*
     Log.d("DLS", "patching bitmaps from last known detail");
     Canvas canvas = new Canvas(bitmap);
@@ -144,11 +124,11 @@ public class Tile {
         }
       }
     }
+    */
 
     //cache.put(cacheKey, bitmap);
-    mState = State.DECODED;
-    tileView.postInvalidate();
-    */
+    //mState = State.DECODED;
+    //tileView.postInvalidate();
   }
 
   // TODO: DEBUG
