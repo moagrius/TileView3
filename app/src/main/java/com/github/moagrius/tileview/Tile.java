@@ -59,10 +59,11 @@ public class Tile {
   }
 
   private void updateDestinationRect() {
-    destinationRect.left = mStartColumn * TILE_SIZE;
-    destinationRect.top = mStartRow * TILE_SIZE;
-    destinationRect.right = destinationRect.left + (TILE_SIZE * getSampleSize());
-    destinationRect.bottom = destinationRect.top + (TILE_SIZE * getSampleSize());
+    int size = TILE_SIZE * getSampleSize();
+    destinationRect.left = mStartColumn * size;
+    destinationRect.top = mStartRow * size;
+    destinationRect.right = destinationRect.left + size;
+    destinationRect.bottom = destinationRect.top + size;
   }
 
   private String getCacheKey() {

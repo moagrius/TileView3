@@ -29,8 +29,8 @@ public class TileView extends View implements
 
   private float mScale = 1f;
   // cache zoom and sample from scale
-  private int mZoom;
-  private int mSample;
+  private int mZoom = 0;
+  private int mSample = 1;
 
   private DetailList mDetailLevels = new DetailList();
   private Detail mCurrentDetail;
@@ -130,11 +130,16 @@ public class TileView extends View implements
   }
 
   private void determineCurrentDetail() {
+    // TODO: temp, debug only detail levels
+    if (mZoom >= mDetailLevels.size()) {
+      return;
+    }
     String template = mDetailLevels.get(mZoom);  // do we have an exact match?
     if (template != null) {
       mCurrentDetail = new Detail(mZoom, template);
       return;
     }
+    /*
     for (int i = 0; i < mZoom; i++) {
       template = mDetailLevels.get(i);
       if (template != null) {  // if it's defined
@@ -147,6 +152,7 @@ public class TileView extends View implements
     int zoomDelta = mZoom - mCurrentDetail.getZoom();  // so defined 1 minus actual 2 = 1
     Log.d("TV", "last sample = " + mCurrentDetail.getSample() + ", zoomDelta = " + zoomDelta);
     mSample = mCurrentDetail.getSample() << zoomDelta;
+    */
   }
 
   @Override
@@ -188,7 +194,9 @@ public class TileView extends View implements
   }
 
   public Grid getCellGridFromViewport() {
-    float tileSize = Tile.TILE_SIZE * mScale / mSample;
+    // scale of 50% would be sample of 2 so tilesize would be
+    Log.d("TV", "scale = " + mScale + ", sample = " + mSample);
+    float tileSize = Tile.TILE_SIZE * mScale * mSample;
     // force rows and columns to be in increments equal to sample size...
     // round down the start and round up the end to make sure we cover the screen
     // e.g. rows 7:18 with sample size 4 become 4:20
