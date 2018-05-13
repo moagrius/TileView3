@@ -29,7 +29,7 @@ public class Detail {
   }
 
   public static int getSampleFromPercent(float percent) {
-    return (int) (1 / percent);
+    return 1 << (int) Maths.log2((int) (1 / percent));
   }
 
   public static int getZoomFromScale(int sample) {

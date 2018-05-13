@@ -10,7 +10,6 @@ import android.graphics.Rect;
 import android.util.Log;
 
 import com.github.moagrius.utils.Hashes;
-import com.github.moagrius.utils.Maths;
 
 import java.io.InputStream;
 import java.util.Locale;
@@ -112,7 +111,7 @@ public class Tile {
     Log.d("DLS", "detail.sample=" + detail.getSample() + ", actual sample=" + getSampleSize());
     // this is an exact match for the detail level
     if (detail.getSample() == getSampleSize()) {
-      String file = String.format(Locale.US, template, (int) Maths.divideSafely(mStartColumn, getSampleSize()), (int) Maths.divideSafely(mStartRow, getSampleSize()));
+      String file = String.format(Locale.US, template, mStartColumn, mStartRow);
       Log.d("DL", "has detail level, file is: " + file);
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
@@ -127,6 +126,7 @@ public class Tile {
       }
       return;
     }
+    /*
     Log.d("DLS", "patching bitmaps from last known detail");
     Canvas canvas = new Canvas(bitmap);
     canvas.drawColor(mDefaultColor);
@@ -143,9 +143,11 @@ public class Tile {
         }
       }
     }
+
     //cache.put(cacheKey, bitmap);
     mState = State.DECODED;
     tileView.postInvalidate();
+    */
   }
 
   // TODO: DEBUG
