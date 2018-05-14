@@ -92,18 +92,15 @@ public class Tile {
     Detail detail = mStateProvider.getDetail();
     String template = detail.getUri();
     // optimize for detail level 1
-    //if (getSampleSize() == 1) {
       String file = String.format(Locale.US, template, mStartColumn, mStartRow);
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
-        bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
+        bitmap = BitmapFactory.decodeStream(stream, null, new TileOptions());
         //cache.put(cacheKey, bitmap);
         mState = State.DECODED;
         tileView.postInvalidate();
       }
       return;
-    //}
-    // use last known detail
 
     // now check disk cache - we don't need disk cache for level 1 because it's already on disk
     // TODO: disk cache
