@@ -221,8 +221,8 @@ public class TileView extends View implements
   private void computeTilesInCurrentViewport() {
     mNewlyVisibleTiles.clear();
     Grid grid = getCellGridFromViewport();
-    for (int row = grid.rows.start; row < grid.rows.end; row += mSample) {
-      for (int column = grid.columns.start; column < grid.columns.end; column += mSample) {
+    for (int row = grid.rows.start; row < grid.rows.end; row++) {
+      for (int column = grid.columns.start; column < grid.columns.end; column++) {
         // TODO: recycle tiles
         Tile tile = new Tile();
         tile.setDefaultColor(0xFFE7E7E7);

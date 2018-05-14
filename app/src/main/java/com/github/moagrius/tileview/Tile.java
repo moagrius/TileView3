@@ -58,9 +58,10 @@ public class Tile {
   }
 
   private void updateDestinationRect() {
+    // TODO: 051318 here.  Check 25% and smaller (skips rows and columns)
     int size = TILE_SIZE * getSampleSize();
-    destinationRect.left = mStartColumn * size;
-    destinationRect.top = mStartRow * size;
+    destinationRect.left = mStartColumn * TILE_SIZE;
+    destinationRect.top = mStartRow * TILE_SIZE;
     destinationRect.right = destinationRect.left + size;
     destinationRect.bottom = destinationRect.top + size;
   }
@@ -108,7 +109,7 @@ public class Tile {
     // TODO: disk cache
 
     /*
-    Log.d("DLS", "patching bitmaps from last known detail");
+    Log.d("DLS", "patching bitmaps from last known detail, start c: " + mStartColumn + ", end c: " + mStartColumn + getSampleSize());
     Canvas canvas = new Canvas(bitmap);
     canvas.drawColor(mDefaultColor);
     int size = TILE_SIZE / getSampleSize();
