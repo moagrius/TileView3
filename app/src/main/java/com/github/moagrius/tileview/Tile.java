@@ -62,8 +62,8 @@ public class Tile {
     int size = TILE_SIZE * getSampleSize();
     destinationRect.left = mStartColumn * TILE_SIZE;
     destinationRect.top = mStartRow * TILE_SIZE;
-    destinationRect.right = destinationRect.left + size;
-    destinationRect.bottom = destinationRect.top + size;
+    destinationRect.right = destinationRect.left + TILE_SIZE;
+    destinationRect.bottom = destinationRect.top + TILE_SIZE;
   }
 
   private String getCacheKey() {
@@ -76,57 +76,15 @@ public class Tile {
     }
     mState = State.DECODING;
     updateDestinationRect();
-    // try to get from memory first
-    String cacheKey = getCacheKey();
-        /*
-    Bitmap cached = cache.get(cacheKey);
-    if (cached != null) {
-      Log.d("T", "got bitmap from memory cache");
-      bitmap = cached;
-      mState = State.DECODED;
-      tileView.postInvalidate();
-      return;
-    }
-    */
-    // TODO: do we need to check disk cache for remote images?
     Detail detail = mStateProvider.getDetail();
     String template = detail.getUri();
-    // optimize for detail level 1
-      String file = String.format(Locale.US, template, mStartColumn, mStartRow);
-      InputStream stream = context.getAssets().open(file);
-      if (stream != null) {
-        bitmap = BitmapFactory.decodeStream(stream, null, new TileOptions());
-        //cache.put(cacheKey, bitmap);
-        mState = State.DECODED;
-        tileView.postInvalidate();
-      }
-      return;
-
-    // now check disk cache - we don't need disk cache for level 1 because it's already on disk
-    // TODO: disk cache
-
-    /*
-    Log.d("DLS", "patching bitmaps from last known detail, start c: " + mStartColumn + ", end c: " + mStartColumn + getSampleSize());
-    Canvas canvas = new Canvas(bitmap);
-    canvas.drawColor(mDefaultColor);
-    int size = TILE_SIZE / getSampleSize();
-    BitmapFactory.Options options = new TileOptions();
-    options.inSampleSize = getSampleSize();
-    for (int i = 0; i < getSampleSize(); i++) {
-      for (int j = 0; j < getSampleSize(); j++) {
-        String file = String.format(Locale.US, detail.getUri(), mStartColumn + j, mStartRow + i);
-        InputStream stream = context.getAssets().open(file);
-        if (stream != null) {
-          Bitmap piece = BitmapFactory.decodeStream(stream, null, options);
-          canvas.drawBitmap(piece, j * size, i * size, null);
-        }
-      }
+    String file = String.format(Locale.US, template, mStartColumn, mStartRow);
+    InputStream stream = context.getAssets().open(file);
+    if (stream != null) {
+      bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
+      mState = State.DECODED;
+      tileView.postInvalidate();
     }
-    */
-
-    //cache.put(cacheKey, bitmap);
-    //mState = State.DECODED;
-    //tileView.postInvalidate();
   }
 
   // TODO: DEBUG

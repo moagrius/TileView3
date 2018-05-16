@@ -11,7 +11,6 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
 
-import com.github.moagrius.utils.Maths;
 import com.github.moagrius.utils.Throttler;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
@@ -79,6 +78,7 @@ public class TileView extends View implements
     mZoomScrollView.setScaleChangedListener(this);
     mZoomScrollView.setScrollChangedListener(this);
     determineCurrentDetail();
+    Log.d("DL", "onAttached, sample is now " + mSample);
     updateViewportAndComputeTilesThrottled();
   }
 
@@ -128,6 +128,7 @@ public class TileView extends View implements
     Log.d("DL", "clearing tiles");
     mTilesVisibleInViewport.clear();
     determineCurrentDetail();
+    Log.d("DL", "onZoomChanged, sample is now " + mSample);
   }
 
   private void determineCurrentDetail() {
@@ -204,21 +205,21 @@ public class TileView extends View implements
 
   public Grid getCellGridFromViewport() {
     // scale of 50% would be sample of 2 so tilesize would be
-    Log.d("TV", "scale = " + mScale + ", sample = " + mSample);
-    float tileSize = Tile.TILE_SIZE * mScale * mSample;
+    //Log.d("TV", "scale = " + mScale + ", sample = " + mSample);
+    float tileSize = Tile.TILE_SIZE * mScale;
     // force rows and columns to be in increments equal to sample size...
     // round down the start and round up the end to make sure we cover the screen
     // e.g. rows 7:18 with sample size 4 become 4:20
     // this is to make sure that the cells are recognized as whole units and not redrawn when the viewport moves by a distance smaller than a computed tile
     Grid grid = new Grid();
-//    grid.rows.start = (int) Math.floor(mViewport.top / tileSize);
-//    grid.rows.end = (int) Math.ceil(mViewport.bottom / tileSize);
-//    grid.columns.start = (int) Math.floor(mViewport.left / tileSize);
-//    grid.columns.end = (int) Math.ceil(mViewport.right / tileSize);
-    grid.rows.start = Maths.roundDownWithStep(mViewport.top / tileSize, mSample);
-    grid.rows.end = Maths.roundUpWithStep(mViewport.bottom / tileSize, mSample);
-    grid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mSample);
-    grid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mSample);
+    grid.rows.start = (int) Math.floor(mViewport.top / tileSize);
+    grid.rows.end = (int) Math.ceil(mViewport.bottom / tileSize);
+    grid.columns.start = (int) Math.floor(mViewport.left / tileSize);
+    grid.columns.end = (int) Math.ceil(mViewport.right / tileSize);
+//    grid.rows.start = Maths.roundDownWithStep(mViewport.top / tileSize, mSample);
+//    grid.rows.end = Maths.roundUpWithStep(mViewport.bottom / tileSize, mSample);
+//    grid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mSample);
+//    grid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mSample);
 
     Log.d("TV", "grid.rows.start = " + grid.rows.start + ", grid.rows.end = " + grid.rows.end);
     return grid;
@@ -227,8 +228,8 @@ public class TileView extends View implements
   private void computeTilesInCurrentViewport() {
     mNewlyVisibleTiles.clear();
     Grid grid = getCellGridFromViewport();
-    for (int row = grid.rows.start; row < grid.rows.end; row += mSample) {
-      for (int column = grid.columns.start; column < grid.columns.end; column += mSample) {
+    for (int row = grid.rows.start; row < grid.rows.end; row++) {
+      for (int column = grid.columns.start; column < grid.columns.end; column++) {
         // TODO: recycle tiles
         Tile tile = new Tile();
         tile.setDefaultColor(0xFFE7E7E7);
