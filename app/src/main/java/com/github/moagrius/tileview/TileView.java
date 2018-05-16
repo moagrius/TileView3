@@ -206,7 +206,7 @@ public class TileView extends View implements
   public Grid getCellGridFromViewport() {
     // scale of 50% would be sample of 2 so tilesize would be
     //Log.d("TV", "scale = " + mScale + ", sample = " + mSample);
-    float tileSize = Tile.TILE_SIZE * mScale;
+    float tileSize = Tile.TILE_SIZE * mScale * mLastValidDetail.getSample();
     // force rows and columns to be in increments equal to sample size...
     // round down the start and round up the end to make sure we cover the screen
     // e.g. rows 7:18 with sample size 4 become 4:20

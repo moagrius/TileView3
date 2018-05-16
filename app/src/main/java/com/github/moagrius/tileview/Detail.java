@@ -41,6 +41,7 @@ public class Detail {
   }
 
   private int mZoom;
+  // this sample is the sample size for grid computation, not image sampling
   private int mSample;
   private float mPercent;
   private String mUri;
