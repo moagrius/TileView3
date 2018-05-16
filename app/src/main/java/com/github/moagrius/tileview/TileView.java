@@ -90,7 +90,6 @@ public class TileView extends View implements
     int previousZoom = mZoom;
     mScale = scale;
     mZoom = Detail.getZoomFromPercent(mScale);
-    Log.d("DLS", "setting zoom to " + mZoom);
     if (mZoom != previousZoom) {
       onZoomChanged(mZoom, previousZoom);
     }
@@ -98,10 +97,9 @@ public class TileView extends View implements
   }
 
   private void onZoomChanged(int current, int previous) {
-    Log.d("DL", "clearing tiles");
     mTilesVisibleInViewport.clear();
     determineCurrentDetail();
-    Log.d("DL", "onZoomChanged, sample is now " + mSample);
+    Log.d("DL", "onZoomChanged, sample is now " + mSample + ", zoom is " + mZoom);
   }
 
   @Override
@@ -145,6 +143,7 @@ public class TileView extends View implements
     if (exactMatch != null) {
       mLastValidDetail = exactMatch;
       mSample = mBitmapOptions.inSampleSize = 1;
+      Log.d("DLS", "exact match found, sample is " + mSample);
       return;
     }
     // so it's not bigger than what we have defined, but we don't have an exact match
@@ -223,7 +222,7 @@ public class TileView extends View implements
 //    grid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mSample);
 //    grid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mSample);
 
-    Log.d("TV", "grid.rows.start = " + grid.rows.start + ", grid.rows.end = " + grid.rows.end);
+//    Log.d("TV", "grid.rows.start = " + grid.rows.start + ", grid.rows.end = " + grid.rows.end);
     return grid;
   }
 
