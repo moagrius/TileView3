@@ -62,8 +62,8 @@ public class Tile {
     int size = TILE_SIZE * getSampleSize();
     destinationRect.left = mStartColumn * TILE_SIZE;
     destinationRect.top = mStartRow * TILE_SIZE;
-    destinationRect.right = destinationRect.left + size;
-    destinationRect.bottom = destinationRect.top + size;
+    destinationRect.right = destinationRect.left + TILE_SIZE;
+    destinationRect.bottom = destinationRect.top + TILE_SIZE;
   }
 
   private String getCacheKey() {
@@ -78,7 +78,7 @@ public class Tile {
     updateDestinationRect();
     Detail detail = mStateProvider.getDetail();
     String template = detail.getUri();
-    String file = String.format(Locale.US, template, mStartColumn, mStartRow);
+    String file = String.format(Locale.US, template, mStartColumn + 1, mStartRow + 1);
     InputStream stream = context.getAssets().open(file);
     if (stream != null) {
       bitmap = BitmapFactory.decodeStream(stream, null, mOptions);

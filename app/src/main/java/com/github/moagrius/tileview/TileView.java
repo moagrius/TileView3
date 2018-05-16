@@ -97,6 +97,13 @@ public class TileView extends View implements
     invalidate();
   }
 
+  private void onZoomChanged(int current, int previous) {
+    Log.d("DL", "clearing tiles");
+    mTilesVisibleInViewport.clear();
+    determineCurrentDetail();
+    Log.d("DL", "onZoomChanged, sample is now " + mSample);
+  }
+
   @Override
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     super.onLayout(changed, left, top, right, bottom);
@@ -124,19 +131,13 @@ public class TileView extends View implements
     return mSample;
   }
 
-  private void onZoomChanged(int current, int previous) {
-    Log.d("DL", "clearing tiles");
-    mTilesVisibleInViewport.clear();
-    determineCurrentDetail();
-    Log.d("DL", "onZoomChanged, sample is now " + mSample);
-  }
-
   private void determineCurrentDetail() {
     // if zoom from scale is greater than the number of defined detail levels, we definitely don't have it
     if (mZoom >= mDetailLevels.size()) {
       mLastValidDetail = mDetailLevels.getHighestDefined();
       int zoomDelta = mZoom - mLastValidDetail.getZoom();
       mSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
+      Log.d("DLS", "no matching DL, sample is " + mSample);
       return;
     }
     // if it's an exact match, use that and set sample to 1
@@ -147,13 +148,14 @@ public class TileView extends View implements
       return;
     }
     // so it's not bigger than what we have defined, but we don't have an exact match
-    // use the closest one from the "largest" (most zoomed-in)
-    for (int i = 0; i < mZoom; i++) {
+    for (int i = mZoom - 1; i >= 0; i--) {
       Detail current = mDetailLevels.get(i);
       if (current != null) {  // if it's defined
         mLastValidDetail = current;
         int zoomDelta = mZoom - mLastValidDetail.getZoom();
         mSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
+        Log.d("DLS", "no matching DL, sample is " + mSample);
+        break;
       }
     }
     // not top level, we need to patch together bitmaps from the last known zoom level
