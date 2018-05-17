@@ -23,8 +23,7 @@ import java.util.concurrent.Executors;
 
 public class TileView extends View implements
     ZoomScrollView.ScaleChangedListener,
-    ScrollView.ScrollChangedListener,
-    Tile.StateProvider {
+    ScrollView.ScrollChangedListener, Tile.Provider {
 
   private BitmapFactory.Options mBitmapOptions = new TileOptions();
 
@@ -33,6 +32,7 @@ public class TileView extends View implements
   // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
   private int mImageSample = 1;
 
+  private Grid mGrid = new Grid();
   private DetailList mDetailLevels = new DetailList();
   private Detail mLastValidDetail;
 
@@ -119,7 +119,6 @@ public class TileView extends View implements
     updateViewportAndComputeTilesThrottled();
   }
 
-  @Override
   public int getZoom() {
     return mZoom;
   }
@@ -132,6 +131,10 @@ public class TileView extends View implements
   @Override
   public int getDetailSample() {
     return mLastValidDetail == null ? 1 : mLastValidDetail.getSample();
+  }
+
+  public TileView getTileView() {
+    return this;
   }
 
   private void determineCurrentDetail() {
@@ -209,40 +212,26 @@ public class TileView extends View implements
     mViewport.bottom = Math.min(visibleBottom, actualBottom);
   }
 
-  public Grid getCellGridFromViewport() {
-    // scale of 50% would be sample of 2 so tilesize would be
-    //Log.d("TV", "scale = " + mScale + ", sample = " + mImageSample);
+  public void populateTileGridFromViewport() {
     float tileSize = Tile.TILE_SIZE * mScale * mLastValidDetail.getSample();
-    // force rows and columns to be in increments equal to sample size...
-    // round down the start and round up the end to make sure we cover the screen
-    // e.g. rows 7:18 with sample size 4 become 4:20
-    // this is to make sure that the cells are recognized as whole units and not redrawn when the viewport moves by a distance smaller than a computed tile
-    Grid grid = new Grid();
-    grid.rows.start = (int) Math.floor(mViewport.top / tileSize);
-    grid.rows.end = (int) Math.ceil(mViewport.bottom / tileSize);
-    grid.columns.start = (int) Math.floor(mViewport.left / tileSize);
-    grid.columns.end = (int) Math.ceil(mViewport.right / tileSize);
-//    grid.rows.start = Maths.roundDownWithStep(mViewport.top / tileSize, mImageSample);
-//    grid.rows.end = Maths.roundUpWithStep(mViewport.bottom / tileSize, mImageSample);
-//    grid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mImageSample);
-//    grid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mImageSample);
-
-//    Log.d("TV", "grid.rows.start = " + grid.rows.start + ", grid.rows.end = " + grid.rows.end);
-    return grid;
+    mGrid.rows.start = (int) Math.floor(mViewport.top / tileSize);
+    mGrid.rows.end = (int) Math.ceil(mViewport.bottom / tileSize);
+    mGrid.columns.start = (int) Math.floor(mViewport.left / tileSize);
+    mGrid.columns.end = (int) Math.ceil(mViewport.right / tileSize);
   }
 
   private void computeTilesInCurrentViewport() {
     mNewlyVisibleTiles.clear();
-    Grid grid = getCellGridFromViewport();
-    for (int row = grid.rows.start; row < grid.rows.end; row++) {
-      for (int column = grid.columns.start; column < grid.columns.end; column++) {
+    populateTileGridFromViewport();
+    for (int row = mGrid.rows.start; row < mGrid.rows.end; row++) {
+      for (int column = mGrid.columns.start; column < mGrid.columns.end; column++) {
         // TODO: recycle tiles
         Tile tile = new Tile();
         tile.setDefaultColor(0xFFE7E7E7);
         tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
         tile.setStartRow(row);
-        tile.setStateProvider(this);
+        tile.setProvider(this);
         mNewlyVisibleTiles.add(tile);
       }
     }
@@ -259,9 +248,9 @@ public class TileView extends View implements
       if (added) {
         mExecutor.execute(() -> {
           try {
-            tile.decode(getContext(), mMemoryCache, this);
+            tile.decode(getContext(), mMemoryCache);
           } catch (Exception e) {
-            Log.d("TV", "exception decoding: ${e.javaClass}, ${e.message}");
+            Log.d("TV", "exception decoding: " + e.getMessage());
           }
         });
       }

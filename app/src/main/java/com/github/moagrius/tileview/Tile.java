@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Rect;
 
 import com.github.moagrius.utils.Hashes;
@@ -27,14 +26,14 @@ public class Tile {
   private int mDefaultColor = Color.GRAY;
   private int mStartRow;
   private int mStartColumn;
-  private StateProvider mStateProvider;
+  private Provider mProvider;
   private State mState = State.IDLE;
-  private Bitmap bitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
+  private Bitmap mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
   private Rect destinationRect = new Rect();
   private BitmapFactory.Options mOptions;
 
-  public void setStateProvider(StateProvider stateProvider) {
-    mStateProvider = stateProvider;
+  public void setProvider(Provider provider) {
+    mProvider = provider;
   }
 
   public void setDefaultColor(int color) {
@@ -55,42 +54,49 @@ public class Tile {
 
   private void updateDestinationRect() {
     // TODO: 051318 here.  Check 25% and smaller (skips rows and columns)
-    int size = TILE_SIZE * mStateProvider.getDetailSample();
+    int size = TILE_SIZE * mProvider.getDetailSample();
     destinationRect.left = mStartColumn * size;
     destinationRect.top = mStartRow * size;
     destinationRect.right = destinationRect.left + size;
     destinationRect.bottom = destinationRect.top + size;
   }
 
-  private String getCacheKey() {
-    return mStateProvider.getDetail().getUri() + ":" + mStartColumn + ":" + mStartRow + ":" + mStateProvider.getImageSample();
+  private String getFilePath() {
+    Detail detail = mProvider.getDetail();
+    String template = detail.getUri();
+    return String.format(Locale.US, template, mStartColumn, mStartRow);
   }
 
-  public void decode(Context context, TileView.Cache cache, TileView tileView) throws Exception {
+  private void populateBitmap(Bitmap bitmap) {
+    mBitmap = bitmap;
+    mState = State.DECODED;
+    mProvider.getTileView().postInvalidate();
+  }
+
+  public void decode(Context context, TileView.Cache cache) throws Exception {
     if (mState != State.IDLE) {
       return;
     }
-    mState = State.DECODING;
     updateDestinationRect();
-    Detail detail = mStateProvider.getDetail();
-    String template = detail.getUri();
-    String file = String.format(Locale.US, template, mStartColumn, mStartRow);
+    String file = getFilePath();
+    Bitmap cached = cache.get(file);
+    if (cached != null) {
+      populateBitmap(cached);
+      return;
+    }
+    mState = State.DECODING;
     InputStream stream = context.getAssets().open(file);
     if (stream != null) {
-      bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
-      mState = State.DECODED;
-      tileView.postInvalidate();
-    }
+      Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
+      populateBitmap(bitmap);
+      cache.put(file, bitmap);
+    }  // TODO: else?
   }
 
-  // TODO: DEBUG
-  Paint mAlphaPaint = new Paint();
-  {
-    mAlphaPaint.setAlpha(100);
-  }
+
   public void draw(Canvas canvas) {
     if (mState == State.DECODED) {
-      canvas.drawBitmap(bitmap, null, destinationRect, mAlphaPaint);
+      canvas.drawBitmap(mBitmap, null, destinationRect, null);
     }
   }
 
@@ -110,9 +116,9 @@ public class Tile {
     return Hashes.compute(17, 31, mStartColumn, mStartRow, mOptions.inSampleSize);
   }
 
-  public interface StateProvider {
+  public interface Provider {
+    TileView getTileView();
     Detail getDetail();
-    int getZoom();
     int getImageSample();
     int getDetailSample();
   }
