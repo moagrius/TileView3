@@ -78,6 +78,7 @@ public class Tile {
     mProvider.getTileView().postInvalidate();
   }
 
+  // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
   public void decode(Context context, TileView.Cache memoryCache, TileView.Cache diskCache) throws Exception {
     if (mState != State.IDLE) {
       return;
@@ -109,6 +110,17 @@ public class Tile {
         diskCache.put(key, bitmap);
       }
     }  // TODO: else?
+    // TODO: 051618, patching
+    // basic idea is column % sample == 0, that's the start of "compound column"
+    // same with rows, which we then grab the next <sample> tiles in size and save them to disk
+    // so something like:
+    // if (mStartColumn % sample == 0 && mStartRow % sample == 0) {
+    //   for (i = 0; i < sample; i++) {
+    //     for (j = 0; j < sample j++) {
+    //       ... get tiles for mStartColumn + i and mStartRow + j, stitch it together, and save it
+    //     }
+    //   }
+    // }
   }
 
 
