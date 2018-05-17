@@ -15,6 +15,7 @@ import com.github.moagrius.utils.Throttler;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -24,6 +25,9 @@ import java.util.concurrent.Executors;
 public class TileView extends View implements
     ZoomScrollView.ScaleChangedListener,
     ScrollView.ScrollChangedListener, Tile.Provider {
+
+  private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
+  private static final int DISK_CACHE_SIZE = 1024 * 20;
 
   private BitmapFactory.Options mBitmapOptions = new TileOptions();
 
@@ -45,7 +49,8 @@ public class TileView extends View implements
   private Executor mExecutor = Executors.newFixedThreadPool(3);
   private Throttler mThrottler = new Throttler(10);
 
-  private Cache mMemoryCache = new MemoryCache((int) ((Runtime.getRuntime().maxMemory() / 1024) / 4));
+  private Cache mDiskCache;
+  private Cache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
 
   private Runnable mUpdateAndComputeTilesRunnable = () -> {
     updateViewport();
@@ -62,6 +67,11 @@ public class TileView extends View implements
 
   public TileView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
+    try {
+      mDiskCache = new DiskCache(context, DISK_CACHE_SIZE);
+    } catch (IOException e) {
+      throw new RuntimeException("Unable to initialize disk cache");
+    }
   }
 
   @Override
@@ -248,7 +258,7 @@ public class TileView extends View implements
       if (added) {
         mExecutor.execute(() -> {
           try {
-            tile.decode(getContext(), mMemoryCache);
+            tile.decode(getContext(), mMemoryCache, mDiskCache);
           } catch (Exception e) {
             Log.d("TV", "exception decoding: " + e.getMessage());
           }

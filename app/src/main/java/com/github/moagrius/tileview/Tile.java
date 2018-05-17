@@ -67,29 +67,47 @@ public class Tile {
     return String.format(Locale.US, template, mStartColumn, mStartRow);
   }
 
+  private String getCacheKey() {
+    String normalized = getFilePath().replace(".", "_").replace("/", "_");
+    return String.format(Locale.US, "%1$s-%2$s", normalized, mProvider.getImageSample());
+  }
+
   private void populateBitmap(Bitmap bitmap) {
     mBitmap = bitmap;
     mState = State.DECODED;
     mProvider.getTileView().postInvalidate();
   }
 
-  public void decode(Context context, TileView.Cache cache) throws Exception {
+  public void decode(Context context, TileView.Cache memoryCache, TileView.Cache diskCache) throws Exception {
     if (mState != State.IDLE) {
       return;
     }
     updateDestinationRect();
-    String file = getFilePath();
-    Bitmap cached = cache.get(file);
+    String key = getCacheKey();
+    Bitmap cached = memoryCache.get(key);
     if (cached != null) {
       populateBitmap(cached);
       return;
     }
+    // if image sample is greater than 1, we should cache the downsampled versions on disk
+    boolean isSubSampled = mProvider.getImageSample() > 1;
+    if (isSubSampled) {
+      cached = diskCache.get(key);
+      if (cached != null) {
+        populateBitmap(cached);
+        return;
+      }
+    }
+    String file = getFilePath();
     mState = State.DECODING;
     InputStream stream = context.getAssets().open(file);
     if (stream != null) {
       Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
       populateBitmap(bitmap);
-      cache.put(file, bitmap);
+      memoryCache.put(key, bitmap);
+      if (isSubSampled) {
+        diskCache.put(key, bitmap);
+      }
     }  // TODO: else?
   }
 
