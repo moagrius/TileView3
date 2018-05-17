@@ -53,21 +53,17 @@ public class Tile {
     mOptions = options;
   }
 
-  public int getSampleSize() {
-    return mStateProvider == null ? 1 : mStateProvider.getSample();
-  }
-
   private void updateDestinationRect() {
     // TODO: 051318 here.  Check 25% and smaller (skips rows and columns)
-    int size = TILE_SIZE * getSampleSize();
-    destinationRect.left = mStartColumn * TILE_SIZE;
-    destinationRect.top = mStartRow * TILE_SIZE;
-    destinationRect.right = destinationRect.left + TILE_SIZE;
-    destinationRect.bottom = destinationRect.top + TILE_SIZE;
+    int size = TILE_SIZE * mStateProvider.getDetailSample();
+    destinationRect.left = mStartColumn * size;
+    destinationRect.top = mStartRow * size;
+    destinationRect.right = destinationRect.left + size;
+    destinationRect.bottom = destinationRect.top + size;
   }
 
   private String getCacheKey() {
-    return mStateProvider.getDetail().getUri() + ":" + mStartColumn + ":" + mStartRow + ":" + getSampleSize();
+    return mStateProvider.getDetail().getUri() + ":" + mStartColumn + ":" + mStartRow + ":" + mStateProvider.getImageSample();
   }
 
   public void decode(Context context, TileView.Cache cache, TileView tileView) throws Exception {
@@ -78,7 +74,7 @@ public class Tile {
     updateDestinationRect();
     Detail detail = mStateProvider.getDetail();
     String template = detail.getUri();
-    String file = String.format(Locale.US, template, mStartColumn + 1, mStartRow + 1);
+    String file = String.format(Locale.US, template, mStartColumn, mStartRow);
     InputStream stream = context.getAssets().open(file);
     if (stream != null) {
       bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
@@ -117,7 +113,8 @@ public class Tile {
   public interface StateProvider {
     Detail getDetail();
     int getZoom();
-    int getSample();
+    int getImageSample();
+    int getDetailSample();
   }
 
 }

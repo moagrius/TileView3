@@ -21,7 +21,7 @@ public class ZoomScrollViewDemoTiles extends AppCompatActivity {
     ZoomScrollView zoomScrollView = findViewById(R.id.zoomscrollview);
     TileView tileView = findViewById(R.id.tileview);
     tileView.setBaseDetailLevel("tiles/%1$d_%2$d.png");
-    //tileView.addDetailLevel(1, "tiles/phi-500000-%1$d_%2$d.jpg");
+    tileView.addDetailLevel(1, "tiles/1/%1$d_%2$d.png");
     //zoomScrollView.setShouldVisuallyScaleContents(true);
   }
 

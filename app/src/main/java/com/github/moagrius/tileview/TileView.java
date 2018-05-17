@@ -31,7 +31,7 @@ public class TileView extends View implements
   private float mScale = 1f;
   private int mZoom = 0;
   // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
-  private int mSample = 1;
+  private int mImageSample = 1;
 
   private DetailList mDetailLevels = new DetailList();
   private Detail mLastValidDetail;
@@ -78,7 +78,7 @@ public class TileView extends View implements
     mZoomScrollView.setScaleChangedListener(this);
     mZoomScrollView.setScrollChangedListener(this);
     determineCurrentDetail();
-    Log.d("DL", "onAttached, sample is now " + mSample);
+    Log.d("DL", "onAttached, sample is now " + mImageSample);
     updateViewportAndComputeTilesThrottled();
   }
 
@@ -99,7 +99,7 @@ public class TileView extends View implements
   private void onZoomChanged(int current, int previous) {
     mTilesVisibleInViewport.clear();
     determineCurrentDetail();
-    Log.d("DL", "onZoomChanged, sample is now " + mSample + ", zoom is " + mZoom);
+    Log.d("DL", "onZoomChanged, sample is now " + mImageSample + ", zoom is " + mZoom);
   }
 
   @Override
@@ -125,8 +125,13 @@ public class TileView extends View implements
   }
 
   @Override
-  public int getSample() {
-    return mSample;
+  public int getImageSample() {
+    return mImageSample;
+  }
+
+  @Override
+  public int getDetailSample() {
+    return mLastValidDetail == null ? 1 : mLastValidDetail.getSample();
   }
 
   private void determineCurrentDetail() {
@@ -134,16 +139,16 @@ public class TileView extends View implements
     if (mZoom >= mDetailLevels.size()) {
       mLastValidDetail = mDetailLevels.getHighestDefined();
       int zoomDelta = mZoom - mLastValidDetail.getZoom();
-      mSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
-      Log.d("DLS", "no matching DL, sample is " + mSample);
+      mImageSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
+      Log.d("DLS", "no matching DL, sample is " + mImageSample);
       return;
     }
     // if it's an exact match, use that and set sample to 1
     Detail exactMatch = mDetailLevels.get(mZoom);  // do we have an exact match?
     if (exactMatch != null) {
       mLastValidDetail = exactMatch;
-      mSample = mBitmapOptions.inSampleSize = 1;
-      Log.d("DLS", "exact match found, sample is " + mSample);
+      mImageSample = mBitmapOptions.inSampleSize = 1;
+      Log.d("DLS", "exact match found, sample is " + mImageSample + ", zoom is " + mZoom);
       return;
     }
     // so it's not bigger than what we have defined, but we don't have an exact match
@@ -152,8 +157,8 @@ public class TileView extends View implements
       if (current != null) {  // if it's defined
         mLastValidDetail = current;
         int zoomDelta = mZoom - mLastValidDetail.getZoom();
-        mSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
-        Log.d("DLS", "no matching DL, sample is " + mSample);
+        mImageSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
+        Log.d("DLS", "no matching DL, sample is " + mImageSample);
         break;
       }
     }
@@ -161,9 +166,9 @@ public class TileView extends View implements
     // so if we have a detail level defined for zoom level 1 (sample 2) but are on zoom level 2 (sample 4) we want an actual sample of 2
     // similarly if we have definition for sample zoom 1 / sample 2 and are on zoom 3 / sample 8, we want actual sample of 4
     //int zoomDelta = mZoom - mLastValidDetail.getZoom();  // so defined 1 minus actual 2 = 1
-    //Log.d("TV", "last sample = " + mLastValidDetail.getSample() + ", zoomDelta = " + zoomDelta);
-    //mSample = mLastValidDetail.getSample() << zoomDelta;
-    //mSample = 1 << zoomDelta;
+    //Log.d("TV", "last sample = " + mLastValidDetail.getImageSample() + ", zoomDelta = " + zoomDelta);
+    //mImageSample = mLastValidDetail.getImageSample() << zoomDelta;
+    //mImageSample = 1 << zoomDelta;
   }
 
   @Override
@@ -206,7 +211,7 @@ public class TileView extends View implements
 
   public Grid getCellGridFromViewport() {
     // scale of 50% would be sample of 2 so tilesize would be
-    //Log.d("TV", "scale = " + mScale + ", sample = " + mSample);
+    //Log.d("TV", "scale = " + mScale + ", sample = " + mImageSample);
     float tileSize = Tile.TILE_SIZE * mScale * mLastValidDetail.getSample();
     // force rows and columns to be in increments equal to sample size...
     // round down the start and round up the end to make sure we cover the screen
@@ -217,10 +222,10 @@ public class TileView extends View implements
     grid.rows.end = (int) Math.ceil(mViewport.bottom / tileSize);
     grid.columns.start = (int) Math.floor(mViewport.left / tileSize);
     grid.columns.end = (int) Math.ceil(mViewport.right / tileSize);
-//    grid.rows.start = Maths.roundDownWithStep(mViewport.top / tileSize, mSample);
-//    grid.rows.end = Maths.roundUpWithStep(mViewport.bottom / tileSize, mSample);
-//    grid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mSample);
-//    grid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mSample);
+//    grid.rows.start = Maths.roundDownWithStep(mViewport.top / tileSize, mImageSample);
+//    grid.rows.end = Maths.roundUpWithStep(mViewport.bottom / tileSize, mImageSample);
+//    grid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mImageSample);
+//    grid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mImageSample);
 
 //    Log.d("TV", "grid.rows.start = " + grid.rows.start + ", grid.rows.end = " + grid.rows.end);
     return grid;
