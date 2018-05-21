@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
-import android.util.Log;
 
 import com.github.moagrius.utils.Hashes;
 
@@ -18,27 +17,20 @@ public class Tile {
 
   public static final int TILE_SIZE = 256;
 
-  private static final String FILE_TEMPLATE = "tiles/phi-500000-%1$d_%2$d.jpg";
-
   enum State {
     IDLE, DECODING, DECODED
   }
 
-  private int mDefaultColor = Color.GRAY;
   private int mStartRow;
   private int mStartColumn;
   private Provider mProvider;
   private State mState = State.IDLE;
-  private Bitmap mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
+  private Bitmap mBitmap;
   private Rect destinationRect = new Rect();
   private BitmapFactory.Options mOptions;
 
   public void setProvider(Provider provider) {
     mProvider = provider;
-  }
-
-  public void setDefaultColor(int color) {
-    mDefaultColor = color;
   }
 
   public void setStartRow(int startRow) {
@@ -54,17 +46,12 @@ public class Tile {
   }
 
   private void updateDestinationRect() {
-    // TODO: 051318 here.  Check 25% and smaller (skips rows and columns)
-    int size = TILE_SIZE * mProvider.getDetailSample();
-//    destinationRect.left = mStartColumn * size;
-//    destinationRect.top = mStartRow * size;
-//    destinationRect.right = destinationRect.left + size;  // TODO: multiply by image sample?
-//    destinationRect.bottom = destinationRect.top + size;
-    destinationRect.left = mStartColumn * TILE_SIZE * mProvider.getDetailSample();
-    destinationRect.top = mStartRow * TILE_SIZE * mProvider.getDetailSample();
-    destinationRect.right = destinationRect.left + TILE_SIZE * mProvider.getDetailSample() * mProvider.getImageSample();  // TODO: multiply by image sample?
-    destinationRect.bottom = destinationRect.top + TILE_SIZE * mProvider.getDetailSample() * mProvider.getImageSample();
-
+    int cellSize = TILE_SIZE * mProvider.getDetailSample();
+    int patchSize = cellSize * mProvider.getImageSample();
+    destinationRect.left = mStartColumn * cellSize;
+    destinationRect.top = mStartRow * cellSize;
+    destinationRect.right = destinationRect.left + patchSize;
+    destinationRect.bottom = destinationRect.top + patchSize;
   }
 
   private String getFilePath() {
@@ -74,17 +61,14 @@ public class Tile {
   }
 
   private String getCacheKey() {
+    // TODO: lazy
     String normalized = getFilePath().replace(".", "_").replace("/", "_");
     return String.format(Locale.US, "%1$s-%2$s", normalized, mProvider.getImageSample());
   }
 
-  private void populateBitmap(Bitmap bitmap) {
-    mBitmap = bitmap;
-    mState = State.DECODED;
-    mProvider.getTileView().postInvalidate();
-  }
-
+  // TODO: write in english
   // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
+  // TODO: reuse bitmaps https://developer.android.com/topic/performance/graphics/manage-memory
   public void decode(Context context, TileView.Cache memoryCache, TileView.Cache diskCache) throws Exception {
     if (mState != State.IDLE) {
       return;
@@ -93,38 +77,37 @@ public class Tile {
     String key = getCacheKey();
     Bitmap cached = memoryCache.get(key);
     if (cached != null) {
-      populateBitmap(cached);
+      mBitmap = cached;
+      mState = State.DECODED;
+      mProvider.getTileView().postInvalidate();
       return;
     }
+    mState = State.DECODING;
     // if image sample is greater than 1, we should cache the downsampled versions on disk
     boolean isSubSampled = mProvider.getImageSample() > 1;
-    /*
     if (isSubSampled) {
       cached = diskCache.get(key);
       if (cached != null) {
-        populateBitmap(cached);
+        mBitmap = cached;
+        mState = State.DECODED;
+        mProvider.getTileView().postInvalidate();
         return;
       }
-    }
-    */
-    mState = State.DECODING;
-    if (isSubSampled) {
-      TileOptions options = new TileOptions();
-      options.inSampleSize = mProvider.getImageSample() * 2;
+      // if we're patching, we need a base bitmap to draw on
+      if (mBitmap == null) {
+        mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
+      }
       Canvas canvas = new Canvas(mBitmap);
       canvas.drawColor(Color.GREEN);
       String template = mProvider.getDetail().getUri();
-      Log.d("DLS", "template=" + template + ", image sample: " + mOptions.inSampleSize);
       int sample = mProvider.getImageSample();
       int size = TILE_SIZE / sample;
       for (int i = 0; i < sample; i++) {
         for (int j = 0; j < sample; j++) {  // TODO:
           String file = String.format(Locale.US, template, mStartColumn + j, mStartRow + i);
-          //Log.d("DLS", "file=" + file);
           InputStream stream = context.getAssets().open(file);
           if (stream != null) {
-            //Bitmap piece = BitmapFactory.decodeStream(stream, null, mOptions);
-            Bitmap piece = BitmapFactory.decodeStream(stream, null, options);
+            Bitmap piece = BitmapFactory.decodeStream(stream, null, mOptions);
             int left = j * size;
             int top = i * size;
             canvas.drawBitmap(piece, left, top, null);
@@ -133,30 +116,20 @@ public class Tile {
       }
       mState = State.DECODED;
       mProvider.getTileView().postInvalidate();
-      //diskCache.put(key, mBitmap);
+      memoryCache.put(key, mBitmap);
+      diskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
       String file = getFilePath();
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
         Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
-        populateBitmap(bitmap);
+        mBitmap = bitmap;
+        mState = State.DECODED;
+        mProvider.getTileView().postInvalidate();
         memoryCache.put(key, bitmap);
       }
     }
-    // TODO: 051618, patching
-    // basic idea is column % sample == 0, that's the start of "compound column"
-    // same with rows, which we then grab the next <sample> tiles in size and save them to disk
-    // so something like:
-    // if (mStartColumn % sample == 0 && mStartRow % sample == 0) {
-    //   for (i = 0; i < sample; i++) {
-    //     for (j = 0; j < sample j++) {
-    //       ... get tiles for mStartColumn + i and mStartRow + j, stitch it together, and save it
-    //     }
-    //   }
-    // }
-    // use the file name of the sample it _would_ be if one exists
   }
-
 
   public void draw(Canvas canvas) {
     if (mState == State.DECODED) {

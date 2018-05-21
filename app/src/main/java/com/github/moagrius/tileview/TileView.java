@@ -154,7 +154,8 @@ public class TileView extends View implements
       mLastValidDetail = mDetailLevels.getHighestDefined();
       Log.d("DLS", "got highest defined, zoom is " + mLastValidDetail.getZoom() + ", " + mLastValidDetail.getUri());
       int zoomDelta = mZoom - mLastValidDetail.getZoom();
-      mImageSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
+      mImageSample = 1 << zoomDelta;
+      mBitmapOptions.inSampleSize = mImageSample << 1;
       Log.d("DLS", "no matching DL, sample is " + mImageSample);
       return;
     }
@@ -172,9 +173,10 @@ public class TileView extends View implements
       if (current != null) {  // if it's defined
         mLastValidDetail = current;
         int zoomDelta = mZoom - mLastValidDetail.getZoom();
-        mImageSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
+        mImageSample = 1 << zoomDelta;
+        mBitmapOptions.inSampleSize = mImageSample << 1;
         Log.d("DLS", "no matching DL, sample is " + mImageSample);
-        break;
+        return;
       }
     }
     // not top level, we need to patch together bitmaps from the last known zoom level
@@ -239,7 +241,6 @@ public class TileView extends View implements
       for (int column = mGrid.columns.start; column < mGrid.columns.end; column += mImageSample) {
         // TODO: recycle tiles
         Tile tile = new Tile();
-        tile.setDefaultColor(0xFFE7E7E7);
         tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
         tile.setStartRow(row);
