@@ -474,7 +474,6 @@ public class ScrollView extends FrameLayout implements
 
   @Override
   public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-    Log.d("ScrollView", "onScroll");
     if (!mIsDragging) {
       mIsDragging = true;
     }

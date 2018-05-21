@@ -11,6 +11,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
 
+import com.github.moagrius.utils.Maths;
 import com.github.moagrius.utils.Throttler;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
@@ -151,6 +152,7 @@ public class TileView extends View implements
     // if zoom from scale is greater than the number of defined detail levels, we definitely don't have it
     if (mZoom >= mDetailLevels.size()) {
       mLastValidDetail = mDetailLevels.getHighestDefined();
+      Log.d("DLS", "got highest defined, zoom is " + mLastValidDetail.getZoom() + ", " + mLastValidDetail.getUri());
       int zoomDelta = mZoom - mLastValidDetail.getZoom();
       mImageSample = mBitmapOptions.inSampleSize = 1 << zoomDelta;
       Log.d("DLS", "no matching DL, sample is " + mImageSample);
@@ -224,17 +226,17 @@ public class TileView extends View implements
 
   public void populateTileGridFromViewport() {
     float tileSize = Tile.TILE_SIZE * mScale * mLastValidDetail.getSample();
-    mGrid.rows.start = (int) Math.floor(mViewport.top / tileSize);
-    mGrid.rows.end = (int) Math.ceil(mViewport.bottom / tileSize);
-    mGrid.columns.start = (int) Math.floor(mViewport.left / tileSize);
-    mGrid.columns.end = (int) Math.ceil(mViewport.right / tileSize);
+    mGrid.rows.start = Maths.roundDownWithStep(mViewport.top / tileSize, mImageSample);
+    mGrid.rows.end = Maths.roundUpWithStep(mViewport.bottom / tileSize, mImageSample);
+    mGrid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mImageSample);
+    mGrid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mImageSample);
   }
 
   private void computeTilesInCurrentViewport() {
     mNewlyVisibleTiles.clear();
     populateTileGridFromViewport();
-    for (int row = mGrid.rows.start; row < mGrid.rows.end; row++) {
-      for (int column = mGrid.columns.start; column < mGrid.columns.end; column++) {
+    for (int row = mGrid.rows.start; row < mGrid.rows.end; row += mImageSample) {
+      for (int column = mGrid.columns.start; column < mGrid.columns.end; column += mImageSample) {
         // TODO: recycle tiles
         Tile tile = new Tile();
         tile.setDefaultColor(0xFFE7E7E7);
