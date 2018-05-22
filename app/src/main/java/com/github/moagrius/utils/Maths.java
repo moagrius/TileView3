@@ -9,14 +9,23 @@ public class Maths {
   }
 
   public static int roundWithStep(float value, int step) {
+    if (value == 0) {
+      return 0;
+    }
     return Math.round(value / step) * step;
   }
 
   public static int roundUpWithStep(float value, int step) {
+    if (value == 0) {
+      return 0;
+    }
     return (int) Math.ceil(value / step) * step;
   }
 
   public static int roundDownWithStep(float value, int step) {
+    if (value == 0) {
+      return 0;
+    }
     return (int) Math.floor(value / step) * step;
   }
 
