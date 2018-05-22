@@ -4,12 +4,10 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Rect;
 
 import com.github.moagrius.utils.Hashes;
 
-import java.io.InputStream;
 import java.util.Locale;
 
 
@@ -21,8 +19,8 @@ public class Tile {
     IDLE, DECODING, DECODED
   }
 
-  private int mStartRow;
-  private int mStartColumn;
+  private int mRow;
+  private int mColumn;
   private Provider mProvider;
   private State mState = State.IDLE;
   private Bitmap mBitmap;
@@ -33,12 +31,20 @@ public class Tile {
     mProvider = provider;
   }
 
-  public void setStartRow(int startRow) {
-    mStartRow = startRow;
+  public int getRow() {
+    return mRow;
   }
 
-  public void setStartColumn(int startColumn) {
-    mStartColumn = startColumn;
+  public void setRow(int row) {
+    mRow = row;
+  }
+
+  public int getColumn() {
+    return mColumn;
+  }
+
+  public void setColumn(int column) {
+    mColumn = column;
   }
 
   public void setOptions(BitmapFactory.Options options) {
@@ -48,21 +54,18 @@ public class Tile {
   private void updateDestinationRect() {
     int cellSize = TILE_SIZE * mProvider.getDetailSample();
     int patchSize = cellSize * mProvider.getImageSample();
-    destinationRect.left = mStartColumn * cellSize;
-    destinationRect.top = mStartRow * cellSize;
+    destinationRect.left = mColumn * cellSize;
+    destinationRect.top = mRow * cellSize;
     destinationRect.right = destinationRect.left + patchSize;
     destinationRect.bottom = destinationRect.top + patchSize;
   }
 
-  private String getFilePath() {
-    Detail detail = mProvider.getDetail();
-    String template = detail.getUri();
-    return String.format(Locale.US, template, mStartColumn, mStartRow);
-  }
-
   private String getCacheKey() {
     // TODO: lazy
-    String normalized = getFilePath().replace(".", "_").replace("/", "_");
+    Detail detail = mProvider.getDetail();
+    String template = detail.getData();
+    String file = String.format(Locale.US, template, mColumn, mRow);
+    String normalized = file.replace(".", "_").replace("/", "_");
     return String.format(Locale.US, "%1$s-%2$s", normalized, mProvider.getImageSample());
   }
 
@@ -79,18 +82,20 @@ public class Tile {
     if (cached != null) {
       mBitmap = cached;
       mState = State.DECODED;
-      mProvider.getTileView().postInvalidate();
+      mProvider.postInvalidate();
       return;
     }
     mState = State.DECODING;
     // if image sample is greater than 1, we should cache the downsampled versions on disk
-    boolean isSubSampled = mProvider.getImageSample() > 1;
+    int sample = mProvider.getImageSample();
+    Detail detail = mProvider.getDetail();
+    boolean isSubSampled = sample > 1;
     if (isSubSampled) {
       cached = diskCache.get(key);
       if (cached != null) {
         mBitmap = cached;
         mState = State.DECODED;
-        mProvider.getTileView().postInvalidate();
+        mProvider.postInvalidate();
         return;
       }
       // if we're patching, we need a base bitmap to draw on
@@ -98,36 +103,22 @@ public class Tile {
         mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
       }
       Canvas canvas = new Canvas(mBitmap);
-      canvas.drawColor(Color.GREEN);
-      String template = mProvider.getDetail().getUri();
-      int sample = mProvider.getImageSample();
       int size = TILE_SIZE / sample;
       for (int i = 0; i < sample; i++) {
-        for (int j = 0; j < sample; j++) {  // TODO:
-          String file = String.format(Locale.US, template, mStartColumn + j, mStartRow + i);
-          InputStream stream = context.getAssets().open(file);
-          if (stream != null) {
-            Bitmap piece = BitmapFactory.decodeStream(stream, null, mOptions);
-            int left = j * size;
-            int top = i * size;
-            canvas.drawBitmap(piece, left, top, null);
-          }
+        for (int j = 0; j < sample; j++) {
+          Bitmap piece = mProvider.getBitmapProvider().getBitmap(context, detail, sample, mColumn + j, mRow + i);
+          canvas.drawBitmap(piece, j * size, i * size, null);
         }
       }
       mState = State.DECODED;
-      mProvider.getTileView().postInvalidate();
+      mProvider.postInvalidate();
       memoryCache.put(key, mBitmap);
       diskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
-      String file = getFilePath();
-      InputStream stream = context.getAssets().open(file);
-      if (stream != null) {
-        Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
-        mBitmap = bitmap;
-        mState = State.DECODED;
-        mProvider.getTileView().postInvalidate();
-        memoryCache.put(key, bitmap);
-      }
+      mBitmap = mProvider.getBitmapProvider().getBitmap(context, detail, sample, mColumn, mRow);
+      mState = State.DECODED;
+      mProvider.postInvalidate();
+      memoryCache.put(key, mBitmap);
     }
   }
 
@@ -137,12 +128,14 @@ public class Tile {
     }
   }
 
+  // TODO: destroy
+
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof Tile) {
       Tile compare = (Tile) obj;
-      return compare.mStartColumn == mStartColumn
-          && compare.mStartRow == mStartRow
+      return compare.mColumn == mColumn
+          && compare.mRow == mRow
           && compare.mOptions.inSampleSize == mOptions.inSampleSize;
     }
     return false;
@@ -150,14 +143,15 @@ public class Tile {
 
   @Override
   public int hashCode() {
-    return Hashes.compute(17, 31, mStartColumn, mStartRow, mOptions.inSampleSize);
+    return Hashes.compute(17, 31, mColumn, mRow, mOptions.inSampleSize);
   }
 
   public interface Provider {
-    TileView getTileView();
+    void postInvalidate();
     Detail getDetail();
     int getImageSample();
     int getDetailSample();
+    BitmapProvider getBitmapProvider();
   }
 
 }

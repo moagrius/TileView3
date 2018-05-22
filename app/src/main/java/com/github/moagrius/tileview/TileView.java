@@ -50,6 +50,8 @@ public class TileView extends View implements
   private Executor mExecutor = Executors.newFixedThreadPool(3);
   private Throttler mThrottler = new Throttler(10);
 
+  private BitmapProvider mBitmapProvider;
+
   private Cache mDiskCache;
   private Cache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
 
@@ -91,6 +93,13 @@ public class TileView extends View implements
     determineCurrentDetail();
     Log.d("DL", "onAttached, sample is now " + mImageSample);
     updateViewportAndComputeTilesThrottled();
+  }
+
+  public BitmapProvider getBitmapProvider() {
+    if (mBitmapProvider == null) {
+      mBitmapProvider = new BitmapProviderAssets();
+    }
+     return mBitmapProvider;
   }
 
   public float getScale() {
@@ -152,7 +161,7 @@ public class TileView extends View implements
     // if zoom from scale is greater than the number of defined detail levels, we definitely don't have it
     if (mZoom >= mDetailLevels.size()) {
       mLastValidDetail = mDetailLevels.getHighestDefined();
-      Log.d("DLS", "got highest defined, zoom is " + mLastValidDetail.getZoom() + ", " + mLastValidDetail.getUri());
+      Log.d("DLS", "got highest defined, zoom is " + mLastValidDetail.getZoom() + ", " + mLastValidDetail.getData());
       int zoomDelta = mZoom - mLastValidDetail.getZoom();
       mImageSample = 1 << zoomDelta;
       mBitmapOptions.inSampleSize = mImageSample << 1;
@@ -242,8 +251,8 @@ public class TileView extends View implements
         // TODO: recycle tiles
         Tile tile = new Tile();
         tile.setOptions(mBitmapOptions);
-        tile.setStartColumn(column);
-        tile.setStartRow(row);
+        tile.setColumn(column);
+        tile.setRow(row);
         tile.setProvider(this);
         mNewlyVisibleTiles.add(tile);
       }

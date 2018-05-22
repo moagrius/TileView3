@@ -44,17 +44,17 @@ public class Detail {
   // this sample is the sample size for grid computation, not image sampling
   private int mSample;
   private float mPercent;
-  private String mUri;
+  private Object mData;
 
-  public Detail(int zoom, String uri) {
-    mUri = uri;
+  public Detail(int zoom, Object data) {
+    mData = data;
     mZoom = zoom;
     mSample = getSampleFromZoom(zoom);
     mPercent = getPercentFromZoom(zoom);
   }
 
-  public String getUri() {
-    return mUri;
+  public <T> T getData() {
+    return (T) mData;
   }
 
   public int getZoom() {
