@@ -26,8 +26,13 @@ public class Tile {
   private Provider mProvider;
   private State mState = State.IDLE;
   private Bitmap mBitmap;
-  private Rect destinationRect = new Rect();
+  private Rect mRawRect = new Rect();
+  private Rect mDestinationRect = new Rect();
   private BitmapFactory.Options mOptions;
+
+  public State getState() {
+    return mState;
+  }
 
   public void setProvider(Provider provider) {
     mProvider = provider;
@@ -45,13 +50,22 @@ public class Tile {
     mOptions = options;
   }
 
+  public Rect getRect() {
+    return mRawRect;
+  }
+
   private void updateDestinationRect() {
     int cellSize = TILE_SIZE * mProvider.getDetailSample();
     int patchSize = cellSize * mProvider.getImageSample();
-    destinationRect.left = mStartColumn * cellSize;
-    destinationRect.top = mStartRow * cellSize;
-    destinationRect.right = destinationRect.left + patchSize;
-    destinationRect.bottom = destinationRect.top + patchSize;
+    mDestinationRect.left = mStartColumn * cellSize;
+    mDestinationRect.top = mStartRow * cellSize;
+    mDestinationRect.right = mDestinationRect.left + patchSize;
+    mDestinationRect.bottom = mDestinationRect.top + patchSize;
+    // raw rect to compare to raw viewport (in theory)
+    mRawRect.left = mStartColumn * TILE_SIZE;
+    mRawRect.top = mStartRow * TILE_SIZE;
+    mRawRect.right = mRawRect.left + TILE_SIZE;
+    mRawRect.bottom = mRawRect.top + TILE_SIZE;
   }
 
   private String getFilePath() {
@@ -73,6 +87,7 @@ public class Tile {
     if (mState != State.IDLE) {
       return;
     }
+    //Thread.sleep(2000 + new Random().nextInt(3000));
     updateDestinationRect();
     String key = getCacheKey();
     Bitmap cached = memoryCache.get(key);
@@ -133,7 +148,7 @@ public class Tile {
 
   public void draw(Canvas canvas) {
     if (mState == State.DECODED) {
-      canvas.drawBitmap(mBitmap, null, destinationRect, null);
+      canvas.drawBitmap(mBitmap, null, mDestinationRect, null);
     }
   }
 

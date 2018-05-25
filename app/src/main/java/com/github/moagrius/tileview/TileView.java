@@ -4,7 +4,11 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.Region;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -46,6 +50,9 @@ public class TileView extends View implements
   private Rect mViewport = new Rect();
   private Set<Tile> mNewlyVisibleTiles = new HashSet<>();
   private Set<Tile> mTilesVisibleInViewport = new HashSet<>();
+  private Set<Tile> mPreviouslyDrawnTiles = new HashSet<>();
+
+  private Region mUnfilledRegion = new Region();
 
   private Executor mExecutor = Executors.newFixedThreadPool(3);
   private Throttler mThrottler = new Throttler(10);
@@ -108,6 +115,12 @@ public class TileView extends View implements
   }
 
   private void onZoomChanged(int current, int previous) {
+    mPreviouslyDrawnTiles.clear();
+    for (Tile tile : mTilesVisibleInViewport) {
+      if (tile.getState() == Tile.State.DECODED) {
+        mPreviouslyDrawnTiles.add(tile);
+      }
+    }
     mTilesVisibleInViewport.clear();
     determineCurrentDetail();
     Log.d("DL", "onZoomChanged, sample is now " + mImageSample + ", zoom is " + mZoom);
@@ -155,7 +168,7 @@ public class TileView extends View implements
       Log.d("DLS", "got highest defined, zoom is " + mLastValidDetail.getZoom() + ", " + mLastValidDetail.getUri());
       int zoomDelta = mZoom - mLastValidDetail.getZoom();
       mImageSample = 1 << zoomDelta;
-      mBitmapOptions.inSampleSize = mImageSample << 1;
+      mBitmapOptions.inSampleSize = mImageSample;
       Log.d("DLS", "no matching DL, sample is " + mImageSample);
       return;
     }
@@ -174,7 +187,7 @@ public class TileView extends View implements
         mLastValidDetail = current;
         int zoomDelta = mZoom - mLastValidDetail.getZoom();
         mImageSample = 1 << zoomDelta;
-        mBitmapOptions.inSampleSize = mImageSample << 1;
+        mBitmapOptions.inSampleSize = mImageSample;
         Log.d("DLS", "no matching DL, sample is " + mImageSample);
         return;
       }
@@ -188,9 +201,21 @@ public class TileView extends View implements
     //mImageSample = 1 << zoomDelta;
   }
 
+  // TODO: debug
+  private Paint mDebugPaint = new Paint();
+  {
+    mDebugPaint.setStyle(Paint.Style.FILL);
+    mDebugPaint.setStrokeWidth(20);
+    mDebugPaint.setColor(Color.RED);
+  }
+
+  private RectF mDebugRect = new RectF();
+
   @Override
   protected void onDraw(Canvas canvas) {
     canvas.scale(mScale, mScale);
+    establishDirtyRegion();
+    drawPreviousTiles(canvas);
     for (Tile tile : mTilesVisibleInViewport) {
       tile.draw(canvas);
     }
@@ -269,6 +294,35 @@ public class TileView extends View implements
       }
     }
   }
+
+  // fancy
+
+  private void establishDirtyRegion() {
+    mUnfilledRegion.set(mViewport);
+    for (Tile tile : mTilesVisibleInViewport) {
+      if (tile.getState() == Tile.State.DECODED) {
+        mUnfilledRegion.op(tile.getRect(), Region.Op.DIFFERENCE);
+      }
+    }
+  }
+
+  // TODO: is the intersection math wrong?  or something else?  also, mPreviouslyDrawnTiles does not seem to be emptying...
+  private void drawPreviousTiles(Canvas canvas) {
+    Iterator<Tile> tilesFromLastDetailLevelIterator = mPreviouslyDrawnTiles.iterator();
+    while (tilesFromLastDetailLevelIterator.hasNext()) {
+      Tile tile = tilesFromLastDetailLevelIterator.next();
+      Rect rect = tile.getRect();
+      // if no part of the rect is in the unfilled area, we don't need it
+      if (mUnfilledRegion.quickReject(rect)) {
+        Log.d("TV", "this previous tile does not intersect with an undrawn area, remove it");
+        tilesFromLastDetailLevelIterator.remove();
+      } else {
+        tile.draw(canvas);
+      }
+    }
+  }
+
+  // end fancy
 
   private static class Grid {
     Range rows = new Range();
