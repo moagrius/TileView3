@@ -23,19 +23,18 @@ public class Tile {
 
   private int mStartRow;
   private int mStartColumn;
-  private Provider mProvider;
   private State mState = State.IDLE;
   private Bitmap mBitmap;
-  private Rect mRawRect = new Rect();
+  private Rect mScaledRect = new Rect();
   private Rect mDestinationRect = new Rect();
   private BitmapFactory.Options mOptions;
+  private int mImageSample = 1;
+  private Detail mDetail;
+  private DrawingView mDrawingView;
+  private Thread mThread;
 
   public State getState() {
     return mState;
-  }
-
-  public void setProvider(Provider provider) {
-    mProvider = provider;
   }
 
   public void setStartRow(int startRow) {
@@ -50,8 +49,20 @@ public class Tile {
     mOptions = options;
   }
 
-  public Rect getRect() {
-    return mRawRect;
+  public void setImageSample(int imageSample) {
+    mImageSample = imageSample;
+  }
+
+  public void setDetail(Detail detail) {
+    mDetail = detail;
+  }
+
+  public void setDrawingView(DrawingView drawingView) {
+    mDrawingView = drawingView;
+  }
+
+  public Rect getScaledRect() {
+    return mScaledRect;
   }
 
   public Rect getDrawingRect() {
@@ -59,29 +70,28 @@ public class Tile {
   }
 
   private void updateDestinationRect() {
-    int cellSize = TILE_SIZE * mProvider.getDetailSample();
-    int patchSize = cellSize * mProvider.getImageSample();
+    int cellSize = TILE_SIZE * mDetail.getSample();
+    int patchSize = cellSize * mImageSample;
     mDestinationRect.left = mStartColumn * cellSize;
     mDestinationRect.top = mStartRow * cellSize;
     mDestinationRect.right = mDestinationRect.left + patchSize;
     mDestinationRect.bottom = mDestinationRect.top + patchSize;
     // raw rect to compare to raw viewport (in theory)
-    mRawRect.left = mStartColumn * TILE_SIZE;
-    mRawRect.top = mStartRow * TILE_SIZE;
-    mRawRect.right = mRawRect.left + TILE_SIZE;
-    mRawRect.bottom = mRawRect.top + TILE_SIZE;
+    mScaledRect.left = mDestinationRect.left * mDetail.getSample();
+    mScaledRect.top = mDestinationRect.top * mDetail.getSample();
+    mScaledRect.right = mDestinationRect.right * mDetail.getSample();
+    mScaledRect.bottom = mDestinationRect.bottom * mDetail.getSample();
   }
 
   private String getFilePath() {
-    Detail detail = mProvider.getDetail();
-    String template = detail.getUri();
+    String template = mDetail.getUri();
     return String.format(Locale.US, template, mStartColumn, mStartRow);
   }
 
   private String getCacheKey() {
     // TODO: lazy
     String normalized = getFilePath().replace(".", "_").replace("/", "_");
-    return String.format(Locale.US, "%1$s-%2$s", normalized, mProvider.getImageSample());
+    return String.format(Locale.US, "%1$s-%2$s", normalized, mImageSample);
   }
 
   // TODO: write in english
@@ -91,38 +101,38 @@ public class Tile {
     if (mState != State.IDLE) {
       return;
     }
-    //Thread.sleep(2000 + new Random().nextInt(3000));
+    mThread = Thread.currentThread();
+    // putting a thread.sleep of even 100ms here shows that maybe we're doing work off screen that we should not be doing
     updateDestinationRect();
     String key = getCacheKey();
-    Bitmap cached = memoryCache.get(key);
-    if (cached != null) {
-      mBitmap = cached;
-      mState = State.DECODED;
-      mProvider.getTileView().postInvalidate();
-      return;
-    }
+//    Bitmap cached = memoryCache.get(key);
+//    if (cached != null) {
+//      mBitmap = cached;
+//      mState = State.DECODED;
+//      mDrawingView.postInvalidate();
+//      return;
+//    }
     mState = State.DECODING;
     // if image sample is greater than 1, we should cache the downsampled versions on disk
-    boolean isSubSampled = mProvider.getImageSample() > 1;
+    boolean isSubSampled = mImageSample > 1;
     if (isSubSampled) {
-      cached = diskCache.get(key);
-      if (cached != null) {
-        mBitmap = cached;
-        mState = State.DECODED;
-        mProvider.getTileView().postInvalidate();
-        return;
-      }
+//      cached = diskCache.get(key);
+//      if (cached != null) {
+//        mBitmap = cached;
+//        mState = State.DECODED;
+//        mDrawingView.postInvalidate();
+//        return;
+//      }
       // if we're patching, we need a base bitmap to draw on
       if (mBitmap == null) {
         mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
       }
       Canvas canvas = new Canvas(mBitmap);
       canvas.drawColor(Color.GREEN);
-      String template = mProvider.getDetail().getUri();
-      int sample = mProvider.getImageSample();
-      int size = TILE_SIZE / sample;
-      for (int i = 0; i < sample; i++) {
-        for (int j = 0; j < sample; j++) {  // TODO:
+      String template = mDetail.getUri();
+      int size = TILE_SIZE / mImageSample;
+      for (int i = 0; i < mImageSample; i++) {
+        for (int j = 0; j < mImageSample; j++) {  // TODO:
           String file = String.format(Locale.US, template, mStartColumn + j, mStartRow + i);
           InputStream stream = context.getAssets().open(file);
           if (stream != null) {
@@ -134,8 +144,8 @@ public class Tile {
         }
       }
       mState = State.DECODED;
-      mProvider.getTileView().postInvalidate();
-      memoryCache.put(key, mBitmap);
+      mDrawingView.postInvalidate();
+      //memoryCache.put(key, mBitmap);
       diskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
       String file = getFilePath();
@@ -144,8 +154,8 @@ public class Tile {
         Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
         mBitmap = bitmap;
         mState = State.DECODED;
-        mProvider.getTileView().postInvalidate();
-        memoryCache.put(key, bitmap);
+        mDrawingView.postInvalidate();
+        //memoryCache.put(key, bitmap);
       }
     }
   }
@@ -156,25 +166,33 @@ public class Tile {
     }
   }
 
+  public void destroy() {
+    mBitmap = null;
+    mState = State.IDLE;
+    if (mThread != null && mThread.isAlive()) {
+      mThread.interrupt();
+    }
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof Tile) {
       Tile compare = (Tile) obj;
-      return compare.getCacheKey().equals(getCacheKey());
+      return compare.mStartColumn == mStartColumn
+          && compare.mStartRow == mStartRow
+          && compare.mImageSample == mImageSample
+          && compare.mDetail.getZoom() == mDetail.getZoom();
     }
     return false;
   }
 
   @Override
   public int hashCode() {
-    return Hashes.compute(17, 31, mStartColumn, mStartRow, mOptions.inSampleSize);
+    return Hashes.compute(17, 31, mStartColumn, mStartRow, mImageSample);
   }
 
-  public interface Provider {
-    TileView getTileView();
-    Detail getDetail();
-    int getImageSample();
-    int getDetailSample();
+  public interface DrawingView {
+    void postInvalidate();
   }
 
 }

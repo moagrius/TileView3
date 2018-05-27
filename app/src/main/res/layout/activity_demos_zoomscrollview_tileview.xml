@@ -8,7 +8,7 @@
       android:id="@+id/tileview"
       android:layout_width="17934px"
       android:layout_height="13452px"
-      android:background="#FFe7e7e7"/>
+      android:background="#FFFF9900"/>
 
   <!--
   <com.github.moagrius.tileview.TileView

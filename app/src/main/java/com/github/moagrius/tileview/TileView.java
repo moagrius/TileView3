@@ -29,7 +29,7 @@ import java.util.concurrent.Executors;
 
 public class TileView extends View implements
     ZoomScrollView.ScaleChangedListener,
-    ScrollView.ScrollChangedListener, Tile.Provider {
+    ScrollView.ScrollChangedListener, Tile.DrawingView {
 
   private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
   private static final int DISK_CACHE_SIZE = 1024 * 20;
@@ -149,20 +149,6 @@ public class TileView extends View implements
     return mZoom;
   }
 
-  @Override
-  public int getImageSample() {
-    return mImageSample;
-  }
-
-  @Override
-  public int getDetailSample() {
-    return mLastValidDetail == null ? 1 : mLastValidDetail.getSample();
-  }
-
-  public TileView getTileView() {
-    return this;
-  }
-
   private void determineCurrentDetail() {
     // if zoom from scale is greater than the number of defined detail levels, we definitely don't have it
     if (mZoom >= mDetailLevels.size()) {
@@ -170,6 +156,7 @@ public class TileView extends View implements
       Log.d("DLS", "got highest defined, zoom is " + mLastValidDetail.getZoom() + ", " + mLastValidDetail.getUri());
       int zoomDelta = mZoom - mLastValidDetail.getZoom();
       mImageSample = 1 << zoomDelta;
+      mBitmapOptions = new TileOptions();
       mBitmapOptions.inSampleSize = mImageSample;
       Log.d("DLS", "no matching DL, sample is " + mImageSample);
       return;
@@ -178,6 +165,7 @@ public class TileView extends View implements
     Detail exactMatch = mDetailLevels.get(mZoom);  // do we have an exact match?
     if (exactMatch != null) {
       mLastValidDetail = exactMatch;
+      mBitmapOptions = new TileOptions();
       mImageSample = mBitmapOptions.inSampleSize = 1;
       Log.d("DLS", "exact match found, sample is " + mImageSample + ", zoom is " + mZoom);
       return;
@@ -189,6 +177,7 @@ public class TileView extends View implements
         mLastValidDetail = current;
         int zoomDelta = mZoom - mLastValidDetail.getZoom();
         mImageSample = 1 << zoomDelta;
+        mBitmapOptions = new TileOptions();
         mBitmapOptions.inSampleSize = mImageSample;
         Log.d("DLS", "no matching DL, sample is " + mImageSample);
         return;
@@ -219,13 +208,8 @@ public class TileView extends View implements
     establishDirtyRegion();
     drawPreviousTiles(canvas);
     for (Tile tile : mTilesVisibleInViewport) {
-      tile.draw(canvas);
+      if (mImageSample == 1) tile.draw(canvas);
     }
-  }
-
-  @Override
-  public Detail getDetail() {
-    return mLastValidDetail;
   }
 
   // TODO: abstract this, new strategy entirely
@@ -271,7 +255,9 @@ public class TileView extends View implements
         tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
         tile.setStartRow(row);
-        tile.setProvider(this);
+        tile.setImageSample(mImageSample);
+        tile.setDetail(mLastValidDetail);
+        tile.setDrawingView(this);
         mNewlyVisibleTiles.add(tile);
       }
     }
@@ -301,18 +287,21 @@ public class TileView extends View implements
 
   private void establishDirtyRegion() {
     // set unfilled to entire viewport
-    mUnfilledRegion.set(
-        (int) (mViewport.left * mScale),
-        (int) (mViewport.top * mScale),
-        (int) (mViewport.right * mScale),
-        (int) (mViewport.bottom * mScale)
-    );
+//    mUnfilledRegion.set(
+//        (int) (mViewport.left * mScale),
+//        (int) (mViewport.top * mScale),
+//        (int) (mViewport.right * mScale),
+//        (int) (mViewport.bottom * mScale)
+//    );
+    mUnfilledRegion.set(mViewport);
+    Log.d("PREDRAW", "unfilled: " + mUnfilledRegion.getBounds());
     // then punch holes in it for every decoded current tile
     // when drawing previous tiles, if there's no intersection with an unfilled area, it can be safely discarded
     // otherwise we should draw the previous tile
     for (Tile tile : mTilesVisibleInViewport) {
       if (tile.getState() == Tile.State.DECODED) {
-        mUnfilledRegion.op(tile.getDrawingRect(), Region.Op.DIFFERENCE);
+        Log.d("PREDRAW", "punching hole at " + tile.getScaledRect());
+        //mUnfilledRegion.op(tile.getScaledRect(), Region.Op.DIFFERENCE);
       }
     }
   }
@@ -324,12 +313,15 @@ public class TileView extends View implements
     while (tilesFromLastDetailLevelIterator.hasNext()) {
       Tile tile = tilesFromLastDetailLevelIterator.next();
       Rect rect = tile.getDrawingRect();
+      Log.d("PREDRAW", "test previous tile, rect is " + rect);
       // if no part of the rect is in the unfilled area, we don't need it
       if (mUnfilledRegion.quickReject(rect)) {
         Log.d("TV", "this previous tile does not intersect with an undrawn area, remove it");
+        tile.destroy();
         tilesFromLastDetailLevelIterator.remove();
         Log.d("TV", "previously drawn tile count (while): " + mPreviouslyDrawnTiles.size());
       } else {
+        Log.d("TV", "previously drawn tile does intersect an undrawn area, draw it: " + tile.getDrawingRect());
         tile.draw(canvas);
       }
     }
