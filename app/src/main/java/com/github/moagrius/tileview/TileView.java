@@ -208,7 +208,7 @@ public class TileView extends View implements
     establishDirtyRegion();
     drawPreviousTiles(canvas);
     for (Tile tile : mTilesVisibleInViewport) {
-      if (mImageSample == 1) tile.draw(canvas);
+      tile.draw(canvas);
     }
   }
 
@@ -287,13 +287,12 @@ public class TileView extends View implements
 
   private void establishDirtyRegion() {
     // set unfilled to entire viewport
-//    mUnfilledRegion.set(
-//        (int) (mViewport.left * mScale),
-//        (int) (mViewport.top * mScale),
-//        (int) (mViewport.right * mScale),
-//        (int) (mViewport.bottom * mScale)
-//    );
-    mUnfilledRegion.set(mViewport);
+    mUnfilledRegion.set(
+        (int) (mViewport.left / mScale),
+        (int) (mViewport.top / mScale),
+        (int) (mViewport.right / mScale),
+        (int) (mViewport.bottom / mScale)
+    );
     Log.d("PREDRAW", "unfilled: " + mUnfilledRegion.getBounds());
     // then punch holes in it for every decoded current tile
     // when drawing previous tiles, if there's no intersection with an unfilled area, it can be safely discarded
@@ -301,13 +300,14 @@ public class TileView extends View implements
     for (Tile tile : mTilesVisibleInViewport) {
       if (tile.getState() == Tile.State.DECODED) {
         Log.d("PREDRAW", "punching hole at " + tile.getScaledRect());
-        //mUnfilledRegion.op(tile.getScaledRect(), Region.Op.DIFFERENCE);
+        mUnfilledRegion.op(tile.getScaledRect(), Region.Op.DIFFERENCE);
       }
     }
   }
 
   // TODO: is the intersection math wrong?  or something else?  also, mPreviouslyDrawnTiles does not seem to be emptying...
   private void drawPreviousTiles(Canvas canvas) {
+    Log.d("TV", "unfilled region: " + mUnfilledRegion.getBounds());
     Log.d("TV", "previously drawn tile count (before): " + mPreviouslyDrawnTiles.size());
     Iterator<Tile> tilesFromLastDetailLevelIterator = mPreviouslyDrawnTiles.iterator();
     while (tilesFromLastDetailLevelIterator.hasNext()) {
