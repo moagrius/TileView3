@@ -54,6 +54,10 @@ public class Tile {
     return mRawRect;
   }
 
+  public Rect getDrawingRect() {
+    return mDestinationRect;
+  }
+
   private void updateDestinationRect() {
     int cellSize = TILE_SIZE * mProvider.getDetailSample();
     int patchSize = cellSize * mProvider.getImageSample();
@@ -156,9 +160,7 @@ public class Tile {
   public boolean equals(Object obj) {
     if (obj instanceof Tile) {
       Tile compare = (Tile) obj;
-      return compare.mStartColumn == mStartColumn
-          && compare.mStartRow == mStartRow
-          && compare.mOptions.inSampleSize == mOptions.inSampleSize;
+      return compare.getCacheKey().equals(getCacheKey());
     }
     return false;
   }

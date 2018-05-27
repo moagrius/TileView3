@@ -3,7 +3,6 @@ package com.github.moagrius.widget;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -109,7 +108,6 @@ public class ZoomScrollView extends ScrollView implements
 
   private void calculateMinimumScaleToFit() {
     float minimumScaleX = getWidth() / (float) getContentWidth();
-    Log.d("Z", "min scale, width=" + getWidth() + ", content=" + getContentWidth() + ", minscalex=" + minimumScaleX);
     float minimumScaleY = getHeight() / (float) getContentHeight();
     float recalculatedMinScale = computeMinimumScaleForMode(minimumScaleX, minimumScaleY);
     if (recalculatedMinScale != mEffectiveMinScale) {
@@ -247,7 +245,6 @@ public class ZoomScrollView extends ScrollView implements
 
   @Override
   public boolean onScale(ScaleGestureDetector scaleGestureDetector) {
-    Log.d("Z", "pinching...");
     float currentScale = mScale * mScaleGestureDetector.getScaleFactor();
     setScaleFromPosition(
       (int) scaleGestureDetector.getFocusX(),

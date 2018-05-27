@@ -116,11 +116,13 @@ public class TileView extends View implements
 
   private void onZoomChanged(int current, int previous) {
     mPreviouslyDrawnTiles.clear();
+    Log.d("TV", "clearing previous tiles");
     for (Tile tile : mTilesVisibleInViewport) {
       if (tile.getState() == Tile.State.DECODED) {
         mPreviouslyDrawnTiles.add(tile);
       }
     }
+    Log.d("TV", "just populated previously drawn tile set: " + mPreviouslyDrawnTiles.size());
     mTilesVisibleInViewport.clear();
     determineCurrentDetail();
     Log.d("DL", "onZoomChanged, sample is now " + mImageSample + ", zoom is " + mZoom);
@@ -298,28 +300,40 @@ public class TileView extends View implements
   // fancy
 
   private void establishDirtyRegion() {
-    mUnfilledRegion.set(mViewport);
+    // set unfilled to entire viewport
+    mUnfilledRegion.set(
+        (int) (mViewport.left * mScale),
+        (int) (mViewport.top * mScale),
+        (int) (mViewport.right * mScale),
+        (int) (mViewport.bottom * mScale)
+    );
+    // then punch holes in it for every decoded current tile
+    // when drawing previous tiles, if there's no intersection with an unfilled area, it can be safely discarded
+    // otherwise we should draw the previous tile
     for (Tile tile : mTilesVisibleInViewport) {
       if (tile.getState() == Tile.State.DECODED) {
-        mUnfilledRegion.op(tile.getRect(), Region.Op.DIFFERENCE);
+        mUnfilledRegion.op(tile.getDrawingRect(), Region.Op.DIFFERENCE);
       }
     }
   }
 
   // TODO: is the intersection math wrong?  or something else?  also, mPreviouslyDrawnTiles does not seem to be emptying...
   private void drawPreviousTiles(Canvas canvas) {
+    Log.d("TV", "previously drawn tile count (before): " + mPreviouslyDrawnTiles.size());
     Iterator<Tile> tilesFromLastDetailLevelIterator = mPreviouslyDrawnTiles.iterator();
     while (tilesFromLastDetailLevelIterator.hasNext()) {
       Tile tile = tilesFromLastDetailLevelIterator.next();
-      Rect rect = tile.getRect();
+      Rect rect = tile.getDrawingRect();
       // if no part of the rect is in the unfilled area, we don't need it
       if (mUnfilledRegion.quickReject(rect)) {
         Log.d("TV", "this previous tile does not intersect with an undrawn area, remove it");
         tilesFromLastDetailLevelIterator.remove();
+        Log.d("TV", "previously drawn tile count (while): " + mPreviouslyDrawnTiles.size());
       } else {
         tile.draw(canvas);
       }
     }
+    Log.d("TV", "previously drawn tile count (after): " + mPreviouslyDrawnTiles.size());
   }
 
   // end fancy
