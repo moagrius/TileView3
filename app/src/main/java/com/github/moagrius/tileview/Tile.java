@@ -25,13 +25,12 @@ public class Tile {
   private int mStartColumn;
   private State mState = State.IDLE;
   private Bitmap mBitmap;
-  private Rect mScaledRect = new Rect();
-  private Rect mDestinationRect = new Rect();
-  private BitmapFactory.Options mOptions;
   private int mImageSample = 1;
   private Detail mDetail;
   private DrawingView mDrawingView;
   private Thread mThread;
+  private Rect mDestinationRect = new Rect();
+  private BitmapFactory.Options mOptions;
 
   public State getState() {
     return mState;
@@ -61,10 +60,6 @@ public class Tile {
     mDrawingView = drawingView;
   }
 
-  public Rect getScaledRect() {
-    return mScaledRect;
-  }
-
   public Rect getDrawingRect() {
     return mDestinationRect;
   }
@@ -76,11 +71,6 @@ public class Tile {
     mDestinationRect.top = mStartRow * cellSize;
     mDestinationRect.right = mDestinationRect.left + patchSize;
     mDestinationRect.bottom = mDestinationRect.top + patchSize;
-    // raw rect to compare to raw viewport (in theory)
-    mScaledRect.left = mDestinationRect.left * mDetail.getSample();
-    mScaledRect.top = mDestinationRect.top * mDetail.getSample();
-    mScaledRect.right = mDestinationRect.right * mDetail.getSample();
-    mScaledRect.bottom = mDestinationRect.bottom * mDetail.getSample();
   }
 
   private String getFilePath() {
@@ -94,7 +84,6 @@ public class Tile {
     return String.format(Locale.US, "%1$s-%2$s", normalized, mImageSample);
   }
 
-  // TODO: write in english
   // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
   // TODO: reuse bitmaps https://developer.android.com/topic/performance/graphics/manage-memory
   public void decode(Context context, TileView.Cache memoryCache, TileView.Cache diskCache) throws Exception {
@@ -105,24 +94,24 @@ public class Tile {
     // putting a thread.sleep of even 100ms here shows that maybe we're doing work off screen that we should not be doing
     updateDestinationRect();
     String key = getCacheKey();
-//    Bitmap cached = memoryCache.get(key);
-//    if (cached != null) {
-//      mBitmap = cached;
-//      mState = State.DECODED;
-//      mDrawingView.postInvalidate();
-//      return;
-//    }
+    Bitmap cached = memoryCache.get(key);
+    if (cached != null) {
+      mBitmap = cached;
+      mState = State.DECODED;
+      mDrawingView.postInvalidate();
+      return;
+    }
     mState = State.DECODING;
     // if image sample is greater than 1, we should cache the downsampled versions on disk
     boolean isSubSampled = mImageSample > 1;
     if (isSubSampled) {
-//      cached = diskCache.get(key);
-//      if (cached != null) {
-//        mBitmap = cached;
-//        mState = State.DECODED;
-//        mDrawingView.postInvalidate();
-//        return;
-//      }
+      cached = diskCache.get(key);
+      if (cached != null) {
+        mBitmap = cached;
+        mState = State.DECODED;
+        mDrawingView.postInvalidate();
+        return;
+      }
       // if we're patching, we need a base bitmap to draw on
       if (mBitmap == null) {
         mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
@@ -132,7 +121,7 @@ public class Tile {
       String template = mDetail.getUri();
       int size = TILE_SIZE / mImageSample;
       for (int i = 0; i < mImageSample; i++) {
-        for (int j = 0; j < mImageSample; j++) {  // TODO:
+        for (int j = 0; j < mImageSample; j++) {
           String file = String.format(Locale.US, template, mStartColumn + j, mStartRow + i);
           InputStream stream = context.getAssets().open(file);
           if (stream != null) {
@@ -145,7 +134,7 @@ public class Tile {
       }
       mState = State.DECODED;
       mDrawingView.postInvalidate();
-      //memoryCache.put(key, mBitmap);
+      memoryCache.put(key, mBitmap);
       diskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
       String file = getFilePath();
@@ -155,7 +144,7 @@ public class Tile {
         mBitmap = bitmap;
         mState = State.DECODED;
         mDrawingView.postInvalidate();
-        //memoryCache.put(key, bitmap);
+        memoryCache.put(key, bitmap);
       }
     }
   }

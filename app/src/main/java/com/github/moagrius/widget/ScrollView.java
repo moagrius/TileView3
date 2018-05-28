@@ -17,8 +17,6 @@ import android.widget.OverScroller;
 import com.github.moagrius.view.TouchUpGestureDetector;
 
 /**
- * TODO: overscroll methods
- *
  * @author Mike Dunn, 6/11/17.
  */
 
@@ -503,7 +501,6 @@ public class ScrollView extends FrameLayout implements
 
   @Override
   public boolean dispatchKeyEvent(KeyEvent event) {
-    Log.d("ScrollView", "dispatchKeyEvent");
     return super.dispatchKeyEvent(event) || executeKeyEvent(event);
   }
 
@@ -516,7 +513,6 @@ public class ScrollView extends FrameLayout implements
    * @return Return true if the event was handled, else false.
    */
   public boolean executeKeyEvent(KeyEvent event) {
-    Log.d("ScrollView", "executeKeyEvent: " + event.getKeyCode() + ", " + KeyEvent.KEYCODE_DPAD_RIGHT);
     // this reads a bit goofy to me (any key advances focus), but it's _exactly_ what android.widget.ScrollView does, so w/e...
     if (!canScroll()) {
       if (isFocused()) {
@@ -569,10 +565,8 @@ public class ScrollView extends FrameLayout implements
           }
           break;
         case KeyEvent.KEYCODE_DPAD_RIGHT:
-          Log.d("ScrollView", "key right");
           // if we can scroll right
           if (canScrollHorizontally(DIRECTION_FORWARD)) {
-            Log.d("ScrollView", "can scroll right");
             // if alt is down, scroll all the way to the end of content
             if (alt) {
               performScrollBy(getChild().getMeasuredWidth() - getScrollX(), 0);

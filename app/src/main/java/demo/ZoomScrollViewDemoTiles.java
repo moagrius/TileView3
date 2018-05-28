@@ -6,7 +6,6 @@ import android.support.v7.app.AppCompatActivity;
 
 import com.github.moagrius.tileview.TileView;
 import com.github.moagrius.tileview3.R;
-import com.github.moagrius.widget.ZoomScrollView;
 
 /**
  * @author Mike Dunn, 2/4/18.
@@ -18,12 +17,10 @@ public class ZoomScrollViewDemoTiles extends AppCompatActivity {
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_demos_zoomscrollview_tileview);
-    ZoomScrollView zoomScrollView = findViewById(R.id.zoomscrollview);
     TileView tileView = findViewById(R.id.tileview);
-    tileView.setBaseDetailLevel("tiles/phi-1000000-%1$d_%2$d.jpg");
-    //tileView.addDetailLevel(1, "tiles/phi-500000-%1$d_%2$d.jpg");
-    //tileView.addDetailLevel(2, "tiles/phi-250000-%1$d_%2$d.jpg");
-    //zoomScrollView.setShouldVisuallyScaleContents(true);
+    tileView.defineZoomLevel("tiles/phi-1000000-%1$d_%2$d.jpg");
+    //tileView.defineZoomLevel(1, "tiles/phi-500000-%1$d_%2$d.jpg");
+    tileView.defineZoomLevel(2, "tiles/phi-250000-%1$d_%2$d.jpg");
   }
 
 }

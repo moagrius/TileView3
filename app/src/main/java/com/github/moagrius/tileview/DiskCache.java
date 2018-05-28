@@ -26,27 +26,16 @@ public class DiskCache implements TileView.Cache {
     mDiskCache = DiskLruCache.open(directory, 1, 1, size);
   }
 
-  private boolean writeBitmapToFile(Bitmap bitmap, DiskLruCache.Editor editor) throws IOException {
-    OutputStream outputStream = null;
-    try {
-      outputStream = new BufferedOutputStream(editor.newOutputStream(0), IO_BUFFER_SIZE);
-      return bitmap.compress(CompressFormat.PNG, 0, outputStream);
-    } finally {
-      if (outputStream != null) {
-        outputStream.close();
-      }
-    }
-  }
-
+  @Override
   public Bitmap put(String key, Bitmap data) {
-    DiskLruCache.Editor editor = null;
-    if (contains(key)) {  // TODO:
+    if (contains(key)) {
       return data;
     }
+    DiskLruCache.Editor editor = null;
     try {
       editor = mDiskCache.edit(key);
       if (editor != null) {
-        if (writeBitmapToFile(data, editor)) {
+        if (writeBitmapToCache(data, editor)) {
           mDiskCache.flush();
           editor.commit();
         } else {
@@ -65,38 +54,57 @@ public class DiskCache implements TileView.Cache {
     return data;
   }
 
+  @Override
   public Bitmap get(String key) {
-    Bitmap bitmap = null;
     DiskLruCache.Snapshot snapshot = null;
     try {
-
       snapshot = mDiskCache.get(key);
       if (snapshot == null) {
         return null;
       }
-      final InputStream in = snapshot.getInputStream(0);
-      if (in != null) {
-        final BufferedInputStream buffIn = new BufferedInputStream(in, IO_BUFFER_SIZE);
-        bitmap = BitmapFactory.decodeStream(buffIn);
+      InputStream inputStream = snapshot.getInputStream(0);
+      if (inputStream != null) {
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream, IO_BUFFER_SIZE);
+        return BitmapFactory.decodeStream(bufferedInputStream);
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      // no op
     } finally {
       if (snapshot != null) {
         snapshot.close();
       }
     }
-    return bitmap;
+    return null;
   }
 
-  public boolean contains(String key) {
+  private boolean writeBitmapToCache(Bitmap bitmap, DiskLruCache.Editor editor) {
+    OutputStream outputStream = null;
+    try {
+      outputStream = editor.newOutputStream(0);
+      outputStream = new BufferedOutputStream(outputStream, IO_BUFFER_SIZE);
+      return bitmap.compress(CompressFormat.PNG, 0, outputStream);
+    } catch (Exception e) {
+      // no op
+    } finally {
+      try {
+        if (outputStream != null) {
+          outputStream.close();
+        }
+      } catch (IOException e) {
+        // no op
+      }
+    }
+    return false;
+  }
+
+  private boolean contains(String key) {
     boolean contained = false;
     DiskLruCache.Snapshot snapshot = null;
     try {
       snapshot = mDiskCache.get(key);
       contained = snapshot != null;
     } catch (IOException e) {
-      e.printStackTrace();
+      // no op
     } finally {
       if (snapshot != null) {
         snapshot.close();
@@ -109,7 +117,7 @@ public class DiskCache implements TileView.Cache {
     try {
       mDiskCache.delete();
     } catch (IOException e) {
-      e.printStackTrace();
+      // no op
     }
   }
 

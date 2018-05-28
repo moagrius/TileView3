@@ -3,7 +3,6 @@ package com.github.moagrius.tileview;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
-// TODO: cache these
 public class TileOptions extends BitmapFactory.Options {
 
   //https://developer.android.com/reference/android/graphics/BitmapFactory.Options.html#inTempStorage
