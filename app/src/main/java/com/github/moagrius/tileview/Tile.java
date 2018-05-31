@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.util.Log;
 
 import com.github.moagrius.utils.Hashes;
 
@@ -29,14 +30,26 @@ public class Tile {
   private Detail mDetail;
   private DrawingView mDrawingView;
   private Thread mThread;
-  private TileView.Cache mMemoryCache;
+  private MemoryCache mMemoryCache;
   private TileView.Cache mDiskCache;
   private BitmapPool mBitmapPool;
   private Rect mDestinationRect = new Rect();
   private BitmapFactory.Options mOptions = new TileOptions();
 
+  public Bitmap getBitmap() {
+    return mBitmap;
+  }
+
+  public BitmapFactory.Options getOptions() {
+    return mOptions;
+  }
+
   public State getState() {
     return mState;
+  }
+
+  public int getImageSample() {
+    return mImageSample;
   }
 
   public void setStartRow(int startRow) {
@@ -60,7 +73,7 @@ public class Tile {
     mDrawingView = drawingView;
   }
 
-  public void setMemoryCache(TileView.Cache memoryCache) {
+  public void setMemoryCache(MemoryCache memoryCache) {
     mMemoryCache = memoryCache;
   }
 
@@ -152,12 +165,17 @@ public class Tile {
       String file = getFilePath();
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
+        // measure it for bitmap reuse
+        mOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeStream(stream, null, mOptions);
         attemptBitmapReuse();
-        Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
-        mBitmap = bitmap;
+        // now decode
+        mOptions.inJustDecodeBounds = false;
+        stream.reset();
+        mBitmap = BitmapFactory.decodeStream(stream, null, mOptions);
         mState = State.DECODED;
         mDrawingView.postInvalidate();
-        mMemoryCache.put(key, bitmap);
+        mMemoryCache.put(key, mBitmap);
       }
     }
   }
@@ -171,6 +189,8 @@ public class Tile {
   public void destroy() {
     //mBitmap.eraseColor(Color.BLACK);
     //mBitmapPool.put(mBitmap);
+    mMemoryCache.remove(getCacheKey());
+    mBitmapPool.add(mBitmap);
     mBitmap = null;
     mState = State.IDLE;
     if (mThread != null && mThread.isAlive()) {
@@ -207,8 +227,9 @@ public class Tile {
 
 
   protected void attemptBitmapReuse() {
-    Bitmap bitmap = mBitmapPool.get(mOptions);
+    Bitmap bitmap = mBitmapPool.get(this);
     if (bitmap != null) {
+      Log.d("TV", "we are reusing a bitmap");
       mOptions.inBitmap = bitmap;
     }
   }

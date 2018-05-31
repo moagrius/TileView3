@@ -30,7 +30,8 @@ public class TileView extends View implements
     ScrollView.ScrollChangedListener,
     Tile.DrawingView {
 
-  private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
+  //private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
+  private static final int MEMORY_CACHE_SIZE = 1024 * 5;
   private static final int DISK_CACHE_SIZE = 1024 * 20;
 
   private BitmapFactory.Options mBitmapOptions = new TileOptions();
@@ -90,6 +91,10 @@ public class TileView extends View implements
       throw new RuntimeException("Unable to initialize disk cache");
     }
   }
+
+  // TODO: TileOptions should be configurable, maybe have a Factory pass it to tiles...
+
+
 
   @Override
   protected void onAttachedToWindow() {
@@ -318,6 +323,7 @@ public class TileView extends View implements
             tile.decode(getContext());
           } catch (Exception e) {
             Log.d("TV", "exception decoding: " + e.getClass().getCanonicalName() + ":" + e.getMessage());
+            e.printStackTrace();
           }
         });
       }
