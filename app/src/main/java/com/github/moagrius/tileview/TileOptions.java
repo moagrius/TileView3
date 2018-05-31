@@ -9,6 +9,7 @@ public class TileOptions extends BitmapFactory.Options {
   private static final byte[] sInTempStorage = new byte[16 * 1024];
 
   {
+    inMutable = true; // needed for reuse
     inPreferredConfig = Bitmap.Config.RGB_565;
     inTempStorage = sInTempStorage;
     inSampleSize = 1;

@@ -14,6 +14,7 @@ import android.view.ViewParent;
 
 import com.github.moagrius.utils.Debounce;
 import com.github.moagrius.utils.Maths;
+import com.github.moagrius.utils.SimpleObjectCache;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
@@ -60,7 +61,12 @@ public class TileView extends View implements
   private Debounce mDebounce = new Debounce(10);
 
   private Cache mDiskCache;
-  private Cache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
+  private MemoryCache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
+  private BitmapPool mBitmapPool = new BitmapPool();
+  {
+    mMemoryCache.setBitmapPool(mBitmapPool);
+  }
+
 
   private Runnable mUpdateAndComputeTilesRunnable = () -> {
     updateViewport();
@@ -270,19 +276,22 @@ public class TileView extends View implements
     mGrid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mImageSample);
   }
 
+  private SimpleObjectCache<Tile> mTileCache = new SimpleObjectCache<>(Tile.class);
+
   private void computeTilesInCurrentViewport() {
     // determine which tiles should be showing.  use sample size for patching very small tiles together
     mNewlyVisibleTiles.clear();
     populateTileGridFromViewport();
     for (int row = mGrid.rows.start; row < mGrid.rows.end; row += mImageSample) {
       for (int column = mGrid.columns.start; column < mGrid.columns.end; column += mImageSample) {
-        // TODO: recycle tiles
-        Tile tile = new Tile();
-        tile.setOptions(mBitmapOptions);
+        Tile tile = mTileCache.get();
         tile.setStartColumn(column);
         tile.setStartRow(row);
         tile.setImageSample(mImageSample);
         tile.setDetail(mLastValidDetail);
+        tile.setMemoryCache(mMemoryCache);
+        tile.setDiskCache(mDiskCache);
+        tile.setBitmapPool(mBitmapPool);
         tile.setDrawingView(this);
         mNewlyVisibleTiles.add(tile);
       }
@@ -294,6 +303,7 @@ public class TileView extends View implements
       // if a tile in the same zoom is not in the most recently computed grid, it's not longer "in viewport", remove it
       if (!mNewlyVisibleTiles.contains(tile)) {
         tile.destroy();
+        mTileCache.put(tile);
         tilesVisibleInViewportIterator.remove();
       }
     }
@@ -305,7 +315,7 @@ public class TileView extends View implements
       if (added) {
         mExecutor.execute(() -> {
           try {
-            tile.decode(getContext(), mMemoryCache, mDiskCache);
+            tile.decode(getContext());
           } catch (Exception e) {
             Log.d("TV", "exception decoding: " + e.getClass().getCanonicalName() + ":" + e.getMessage());
           }
