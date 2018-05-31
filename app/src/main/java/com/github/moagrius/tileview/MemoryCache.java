@@ -22,7 +22,9 @@ public class MemoryCache extends LruCache<String, Bitmap> implements TileView.Ca
 
   @Override
   protected void entryRemoved(boolean evicted, String key, Bitmap oldValue, Bitmap newValue) {
-    //mBitmapPool.add(oldValue);
+    synchronized (this) {
+      mBitmapPool.add(oldValue);
+    }
   }
 
 }

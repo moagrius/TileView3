@@ -171,7 +171,7 @@ public class Tile {
         attemptBitmapReuse();
         // now decode
         mOptions.inJustDecodeBounds = false;
-        stream.reset();
+        stream = context.getAssets().open(file);
         mBitmap = BitmapFactory.decodeStream(stream, null, mOptions);
         mState = State.DECODED;
         mDrawingView.postInvalidate();
@@ -189,8 +189,6 @@ public class Tile {
   public void destroy() {
     //mBitmap.eraseColor(Color.BLACK);
     //mBitmapPool.put(mBitmap);
-    mMemoryCache.remove(getCacheKey());
-    mBitmapPool.add(mBitmap);
     mBitmap = null;
     mState = State.IDLE;
     if (mThread != null && mThread.isAlive()) {

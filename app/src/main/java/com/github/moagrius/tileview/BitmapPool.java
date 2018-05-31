@@ -2,7 +2,6 @@ package com.github.moagrius.tileview;
 
 import android.annotation.TargetApi;
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.util.Log;
@@ -85,7 +84,7 @@ public class BitmapPool implements IBitmapPool {
       return null;
     }
 
-    private int getBytesPerPixel(Config config) {
+    private int getBytesPerPixel(Bitmap.Config config) {
       switch (config) {
         case ARGB_8888:
           return 4;
