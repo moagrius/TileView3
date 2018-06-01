@@ -8,12 +8,13 @@ import android.graphics.Rect;
 import android.graphics.Region;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
 
 import com.github.moagrius.utils.Debounce;
 import com.github.moagrius.utils.Maths;
+import com.github.moagrius.utils.SimpleObjectPool;
+import com.github.moagrius.utils.Throttler;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
@@ -21,13 +22,12 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 public class TileView extends View implements
     ZoomScrollView.ScaleChangedListener,
     ScrollView.ScrollChangedListener,
-    Tile.DrawingView {
+    Tile.DrawingView,
+    Tile.Listener {
 
   private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
   private static final int DISK_CACHE_SIZE = 1024 * 20;
@@ -55,12 +55,14 @@ public class TileView extends View implements
   private Rect mViewport = new Rect();
   private Region mUnfilledRegion = new Region();
 
-  // TODO: get number of threads from available cores
-  private Executor mExecutor = Executors.newFixedThreadPool(3);
+  private TileRenderExecutor mExecutor = new TileRenderExecutor();
   private Debounce mDebounce = new Debounce(10);
+  private Throttler mThrottler = new Throttler(10);
 
-  private Cache mDiskCache;
-  private Cache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
+  private DiskCache mDiskCache;
+  private MemoryCache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
+
+  private SimpleObjectPool<Tile> mTilePool = new SimpleObjectPool<>(Tile::new);
 
   private Runnable mUpdateAndComputeTilesRunnable = () -> {
     updateViewport();
@@ -252,7 +254,16 @@ public class TileView extends View implements
   }
 
   private void updateViewportAndComputeTilesThrottled() {
-    mDebounce.attempt(mUpdateAndComputeTilesRunnable);
+    mThrottler.attempt(mUpdateAndComputeTilesRunnable);
+  }
+
+  @Override
+  public void postInvalidate() {
+    mDebounce.attempt(this::originalInvalidate);
+  }
+
+  private void originalInvalidate() {
+    super.postInvalidate();
   }
 
   private void updateViewport() {
@@ -277,13 +288,17 @@ public class TileView extends View implements
     for (int row = mGrid.rows.start; row < mGrid.rows.end; row += mImageSample) {
       for (int column = mGrid.columns.start; column < mGrid.columns.end; column += mImageSample) {
         // TODO: recycle tiles
-        Tile tile = new Tile();
+        Tile tile = mTilePool.get();
+        tile.setThreadPoolExecutor(mExecutor);
         tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
         tile.setStartRow(row);
         tile.setImageSample(mImageSample);
         tile.setDetail(mLastValidDetail);
+        tile.setMemoryCache(mMemoryCache);
+        tile.setDiskCache(mDiskCache);
         tile.setDrawingView(this);
+        tile.setListener(this);
         mNewlyVisibleTiles.add(tile);
       }
     }
@@ -299,19 +314,13 @@ public class TileView extends View implements
     }
     // we just removed all tiles outside of the viewport, now add any new ones that are in the viewport that weren't there the last
     // time we performed this computation
-    for (Tile tile : mNewlyVisibleTiles) {
-      boolean added = mTilesVisibleInViewport.add(tile);
-      // if added is false, that means it was already scheduled
-      if (added) {
-        mExecutor.execute(() -> {
-          try {
-            tile.decode(getContext(), mMemoryCache, mDiskCache);
-          } catch (Exception e) {
-            Log.d("TV", "exception decoding: " + e.getClass().getCanonicalName() + ":" + e.getMessage());
-          }
-        });
-      }
-    }
+    mTilesVisibleInViewport.addAll(mNewlyVisibleTiles);
+    mExecutor.queue(mTilesVisibleInViewport);
+  }
+
+  @Override
+  public void onTileDestroyed(Tile tile) {
+    mTilePool.put(tile);
   }
 
   private static class Grid {

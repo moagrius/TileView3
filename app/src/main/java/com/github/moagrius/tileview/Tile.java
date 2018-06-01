@@ -11,9 +11,9 @@ import com.github.moagrius.utils.Hashes;
 
 import java.io.InputStream;
 import java.util.Locale;
+import java.util.concurrent.ThreadPoolExecutor;
 
-
-public class Tile {
+public class Tile implements Runnable {
 
   public static final int TILE_SIZE = 256;
 
@@ -28,9 +28,42 @@ public class Tile {
   private int mImageSample = 1;
   private Detail mDetail;
   private DrawingView mDrawingView;
+  private Listener mListener;
   private Thread mThread;
   private Rect mDestinationRect = new Rect();
   private BitmapFactory.Options mOptions;
+  private MemoryCache mMemoryCache;
+  private DiskCache mDiskCache;
+  private ThreadPoolExecutor mThreadPoolExecutor;
+
+  public void destroy() {
+    if (mState == State.IDLE) {
+      return;
+    }
+    if(mThread != null && mThread.isAlive()) {
+      mThread.interrupt();
+    }
+    mThreadPoolExecutor.remove(this);
+    mBitmap = null;
+    mState = State.IDLE;
+    mListener.onTileDestroyed(this);
+  }
+
+  public void setListener(Listener listener) {
+    mListener = listener;
+  }
+
+  public void setThreadPoolExecutor(ThreadPoolExecutor threadPoolExecutor) {
+    mThreadPoolExecutor = threadPoolExecutor;
+  }
+
+  public void setMemoryCache(MemoryCache memoryCache) {
+    mMemoryCache = memoryCache;
+  }
+
+  public void setDiskCache(DiskCache diskCache) {
+    mDiskCache = diskCache;
+  }
 
   public State getState() {
     return mState;
@@ -86,32 +119,33 @@ public class Tile {
 
   // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
   // TODO: reuse bitmaps https://developer.android.com/topic/performance/graphics/manage-memory
-  public void decode(Context context, TileView.Cache memoryCache, TileView.Cache diskCache) throws Exception {
+  public void decode(Context context) throws Exception {
     if (mState != State.IDLE) {
       return;
     }
     mThread = Thread.currentThread();
     // putting a thread.sleep of even 100ms here shows that maybe we're doing work off screen that we should not be doing
     updateDestinationRect();
-    String key = getCacheKey();
-    Bitmap cached = memoryCache.get(key);
-    if (cached != null) {
-      mBitmap = cached;
-      mState = State.DECODED;
-      mDrawingView.postInvalidate();
-      return;
-    }
+//    String key = getCacheKey();
+//    Bitmap cached = mMemoryCache.get(key);
+//    if (cached != null) {
+//      Log.d("TV", "cache hit");
+//      mBitmap = cached;
+//      mState = State.DECODED;
+//      mDrawingView.postInvalidate();
+//      return;
+//    }
     mState = State.DECODING;
     // if image sample is greater than 1, we should cache the downsampled versions on disk
     boolean isSubSampled = mImageSample > 1;
     if (isSubSampled) {
-      cached = diskCache.get(key);
-      if (cached != null) {
-        mBitmap = cached;
-        mState = State.DECODED;
-        mDrawingView.postInvalidate();
-        return;
-      }
+//      cached = mDiskCache.get(key);
+//      if (cached != null) {
+//        mBitmap = cached;
+//        mState = State.DECODED;
+//        mDrawingView.postInvalidate();
+//        return;
+//      }
       // if we're patching, we need a base bitmap to draw on
       if (mBitmap == null) {
         mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
@@ -134,8 +168,8 @@ public class Tile {
       }
       mState = State.DECODED;
       mDrawingView.postInvalidate();
-      memoryCache.put(key, mBitmap);
-      diskCache.put(key, mBitmap);
+     // mMemoryCache.put(key, mBitmap);
+      //mDiskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
       String file = getFilePath();
       InputStream stream = context.getAssets().open(file);
@@ -144,22 +178,22 @@ public class Tile {
         mBitmap = bitmap;
         mState = State.DECODED;
         mDrawingView.postInvalidate();
-        memoryCache.put(key, bitmap);
+        //mMemoryCache.put(key, bitmap);
       }
+    }
+  }
+  
+  public void run() {
+    try {
+      decode(mDrawingView.getContext());
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 
   public void draw(Canvas canvas) {
     if (mState == State.DECODED) {
       canvas.drawBitmap(mBitmap, null, mDestinationRect, null);
-    }
-  }
-
-  public void destroy() {
-    mBitmap = null;
-    mState = State.IDLE;
-    if (mThread != null && mThread.isAlive()) {
-      mThread.interrupt();
     }
   }
 
@@ -182,6 +216,11 @@ public class Tile {
 
   public interface DrawingView {
     void postInvalidate();
+    Context getContext();
+  }
+
+  public interface Listener {
+    void onTileDestroyed(Tile tile);
   }
 
 }
