@@ -173,7 +173,7 @@ public class Tile {
         mState = State.DECODED;
         mDrawingView.postInvalidate();
         mMemoryCache.put(key, mBitmap);
-        //mMemoryCache.setEmployed(key, true);
+        mMemoryCache.setEmployed(key, true);
       }
     }
   }
@@ -223,7 +223,7 @@ public class Tile {
 
 
   private void attemptBitmapReuse() {
-    Bitmap bitmap = mMemoryCache.getBitmapForReuse(mDecodeOptions);
+    Bitmap bitmap = mMemoryCache.getBitmapForReuse(mMeasureOptions);
     if (bitmap != null) {
       Log.d("TV", "we are reusing a bitmap");
       mDecodeOptions.inBitmap = bitmap;

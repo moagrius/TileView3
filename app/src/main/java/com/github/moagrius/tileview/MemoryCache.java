@@ -53,6 +53,7 @@ public class MemoryCache implements TileView.Cache {
       if (oldest == null) {
         break;
       }
+      Log.d("TV", "removing in trimToSize");
       mMap.remove(oldest.getKey());
       mSize -= sizeOf(oldest.getValue());
     }
@@ -80,6 +81,9 @@ public class MemoryCache implements TileView.Cache {
       }
       Bitmap candidate = entry.getValue();
       if (canUseForInBitmap(candidate, options)) {
+        Log.d("TV", "removing to be used");
+        mSize -= sizeOf(candidate);
+        setEmployed(key, true);
         iterator.remove();
         return candidate;
       }
