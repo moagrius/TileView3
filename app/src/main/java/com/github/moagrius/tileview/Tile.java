@@ -127,13 +127,13 @@ public class Tile {
     // if image sample is greater than 1, we should cache the downsampled versions on disk
     boolean isSubSampled = mImageSample > 1;
     if (isSubSampled) {
-      cached = mDiskCache.get(key);
-      if (cached != null) {
-        mBitmap = cached;
-        mState = State.DECODED;
-        mDrawingView.postInvalidate();
-        return;
-      }
+//      cached = mDiskCache.get(key);
+//      if (cached != null) {
+//        mBitmap = cached;
+//        mState = State.DECODED;
+//        mDrawingView.postInvalidate();
+//        return;
+//      }
       // if we're patching, we need a base bitmap to draw on
       if (mBitmap == null) {
         mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
@@ -156,15 +156,15 @@ public class Tile {
       }
       mState = State.DECODED;
       mDrawingView.postInvalidate();
-      mDiskCache.put(key, mBitmap);
+     // mDiskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
       Log.d("TV", "we must decode, try to reuse a different bitmap from memory cache to draw over");
       String file = getFilePath();
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
         // measure it for bitmap reuse
-        //BitmapFactory.decodeStream(stream, null, mMeasureOptions);
-        //attemptBitmapReuse();
+        BitmapFactory.decodeStream(stream, null, mMeasureOptions);
+        attemptBitmapReuse();
         // now decode
         stream.reset();
         mBitmap = BitmapFactory.decodeStream(stream, null, mDecodeOptions);
@@ -181,12 +181,14 @@ public class Tile {
   }
 
   public void destroy() {
-    mMemoryCache.put(getCacheKey(), mBitmap);
+    if (mState == State.DECODED) {
+      mMemoryCache.put(getCacheKey(), mBitmap);
+    }
     mBitmap = null;
     mState = State.IDLE;
     Log.d("TV", "freeing bitmap: " + getCacheKey());
     if (mThread != null && mThread.isAlive()) {
-      mThread.interrupt();
+      //mThread.interrupt();
     }
   }
 
