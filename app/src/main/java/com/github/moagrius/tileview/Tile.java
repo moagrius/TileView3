@@ -32,16 +32,12 @@ public class Tile {
   private Thread mThread;
   private MemoryCache mMemoryCache;
   private TileView.Cache mDiskCache;
-  private BitmapPool mBitmapPool;
   private Rect mDestinationRect = new Rect();
-  private BitmapFactory.Options mOptions = new TileOptions();
-
-  public Bitmap getBitmap() {
-    return mBitmap;
-  }
+  private BitmapFactory.Options mDecodeOptions = new TileOptions(false);
+  private BitmapFactory.Options mMeasureOptions = new TileOptions(true);
 
   public BitmapFactory.Options getOptions() {
-    return mOptions;
+    return mDecodeOptions;
   }
 
   public State getState() {
@@ -62,7 +58,7 @@ public class Tile {
 
   public void setImageSample(int imageSample) {
     mImageSample = imageSample;
-    mOptions.inSampleSize = imageSample;
+    mDecodeOptions.inSampleSize = imageSample;
   }
 
   public void setDetail(Detail detail) {
@@ -79,10 +75,6 @@ public class Tile {
 
   public void setDiskCache(TileView.Cache diskCache) {
     mDiskCache = diskCache;
-  }
-
-  public void setBitmapPool(BitmapPool bitmapPool) {
-    mBitmapPool = bitmapPool;
   }
 
   public Rect getDrawingRect() {
@@ -121,6 +113,7 @@ public class Tile {
     String key = getCacheKey();
     Bitmap cached = mMemoryCache.get(key);
     if (cached != null) {
+      mMemoryCache.setEmployed(key, true);
       mBitmap = cached;
       mState = State.DECODED;
       mDrawingView.postInvalidate();
@@ -132,6 +125,7 @@ public class Tile {
     if (isSubSampled) {
       cached = mDiskCache.get(key);
       if (cached != null) {
+        mMemoryCache.setEmployed(key, true);
         mBitmap = cached;
         mState = State.DECODED;
         mDrawingView.postInvalidate();
@@ -150,7 +144,7 @@ public class Tile {
           String file = String.format(Locale.US, template, mStartColumn + j, mStartRow + i);
           InputStream stream = context.getAssets().open(file);
           if (stream != null) {
-            Bitmap piece = BitmapFactory.decodeStream(stream, null, mOptions);
+            Bitmap piece = BitmapFactory.decodeStream(stream, null, mDecodeOptions);
             int left = j * size;
             int top = i * size;
             canvas.drawBitmap(piece, left, top, null);
@@ -166,13 +160,11 @@ public class Tile {
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
         // measure it for bitmap reuse
-        mOptions.inJustDecodeBounds = true;
-        BitmapFactory.decodeStream(stream, null, mOptions);
+        BitmapFactory.decodeStream(stream, null, mMeasureOptions);
         attemptBitmapReuse();
         // now decode
-        mOptions.inJustDecodeBounds = false;
-        stream = context.getAssets().open(file);
-        mBitmap = BitmapFactory.decodeStream(stream, null, mOptions);
+        stream.reset();
+        mBitmap = BitmapFactory.decodeStream(stream, null, mDecodeOptions);
         mState = State.DECODED;
         mDrawingView.postInvalidate();
         mMemoryCache.put(key, mBitmap);
@@ -187,10 +179,9 @@ public class Tile {
   }
 
   public void destroy() {
-    //mBitmap.eraseColor(Color.BLACK);
-    //mBitmapPool.put(mBitmap);
     mBitmap = null;
     mState = State.IDLE;
+    mMemoryCache.setEmployed(getCacheKey(), false);
     if (mThread != null && mThread.isAlive()) {
       mThread.interrupt();
     }
@@ -224,11 +215,11 @@ public class Tile {
 
 
 
-  protected void attemptBitmapReuse() {
-    Bitmap bitmap = mBitmapPool.get(this);
+  private void attemptBitmapReuse() {
+    Bitmap bitmap = mMemoryCache.getBitmapForReuse(mDecodeOptions);
     if (bitmap != null) {
       Log.d("TV", "we are reusing a bitmap");
-      mOptions.inBitmap = bitmap;
+      mDecodeOptions.inBitmap = bitmap;
     }
   }
 

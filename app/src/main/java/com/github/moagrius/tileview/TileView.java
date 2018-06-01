@@ -2,7 +2,6 @@ package com.github.moagrius.tileview;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.Region;
@@ -32,9 +31,7 @@ public class TileView extends View implements
 
   //private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
   private static final int MEMORY_CACHE_SIZE = 1024 * 5;
-  private static final int DISK_CACHE_SIZE = 1024 * 20;
-
-  private BitmapFactory.Options mBitmapOptions = new TileOptions();
+  private static final int DISK_CACHE_SIZE = 1;  // DUM DUM DUMMMM
 
   private float mScale = 1f;
   private int mZoom = 0;
@@ -63,11 +60,6 @@ public class TileView extends View implements
 
   private Cache mDiskCache;
   private MemoryCache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
-  private BitmapPool mBitmapPool = new BitmapPool();
-  {
-    mMemoryCache.setBitmapPool(mBitmapPool);
-  }
-
 
   private Runnable mUpdateAndComputeTilesRunnable = () -> {
     updateViewport();
@@ -183,16 +175,12 @@ public class TileView extends View implements
       mLastValidDetail = mDetailList.getHighestDefined();
       int zoomDelta = mZoom - mLastValidDetail.getZoom();
       mImageSample = 1 << zoomDelta;
-      mBitmapOptions = new TileOptions();
-      mBitmapOptions.inSampleSize = mImageSample;
       return;
     }
     // best case, it's an exact match, use that and set sample to 1
     Detail exactMatch = mDetailList.get(mZoom);
     if (exactMatch != null) {
       mLastValidDetail = exactMatch;
-      mBitmapOptions = new TileOptions();
-      mImageSample = mBitmapOptions.inSampleSize = 1;
       return;
     }
     // it's not bigger than what we have defined, but we don't have an exact match, start at the requested zoom and work back
@@ -203,8 +191,6 @@ public class TileView extends View implements
         mLastValidDetail = current;
         int zoomDelta = mZoom - mLastValidDetail.getZoom();
         mImageSample = 1 << zoomDelta;
-        mBitmapOptions = new TileOptions();
-        mBitmapOptions.inSampleSize = mImageSample;
         return;
       }
     }
@@ -296,7 +282,6 @@ public class TileView extends View implements
         tile.setDetail(mLastValidDetail);
         tile.setMemoryCache(mMemoryCache);
         tile.setDiskCache(mDiskCache);
-        tile.setBitmapPool(mBitmapPool);
         tile.setDrawingView(this);
         mNewlyVisibleTiles.add(tile);
       }
