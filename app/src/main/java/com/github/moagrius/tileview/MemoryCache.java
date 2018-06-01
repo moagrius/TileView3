@@ -3,6 +3,7 @@ package com.github.moagrius.tileview;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
+import android.util.Log;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -22,6 +23,7 @@ public class MemoryCache implements TileView.Cache {
   }
 
   public synchronized Bitmap get(String key) {
+    Log.d("TV", "getting a bitmap from memory cache: " + mMap.size());
     return mMap.get(key);
   }
 
@@ -34,9 +36,7 @@ public class MemoryCache implements TileView.Cache {
   }
 
   public synchronized Bitmap put(String key, Bitmap value) {
-    if (key == null || value == null) {
-      throw new NullPointerException("key == null || value == null");
-    }
+    Log.d("TV", "putting a bitmap in memory cache: " + mMap.size());
     mSize += sizeOf(value);
     Bitmap previous = mMap.put(key, value);
     if (previous != null) {
@@ -46,26 +46,17 @@ public class MemoryCache implements TileView.Cache {
     return previous;
   }
 
-  public synchronized void remove(String key) {
-    mMap.remove(key);
-  }
-
   private void trimToSize(int maxSize) {
+    Log.d("TV", "calling trimToSize");
     while (mSize > maxSize && !mMap.isEmpty()) {
-      Map.Entry<String, Bitmap> oldest = getOldest();
+      Map.Entry<String, Bitmap> oldest =  mMap.entrySet().iterator().next();
       if (oldest == null) {
         break;
       }
       mMap.remove(oldest.getKey());
       mSize -= sizeOf(oldest.getValue());
     }
-  }
-
-  private Map.Entry<String, Bitmap> getOldest() {
-    if (mMap.isEmpty()) {
-      return null;
-    }
-    return mMap.entrySet().iterator().next();
+    Log.d("TV", "done with trimToSize, " + mMap.size());
   }
 
   private int sizeOf(Bitmap bitmap) {
@@ -74,19 +65,26 @@ public class MemoryCache implements TileView.Cache {
 
   public synchronized Bitmap getBitmapForReuse(BitmapFactory.Options options) {
     Iterator<Map.Entry<String, Bitmap>> iterator = mMap.entrySet().iterator();
+    Log.d("TV", "try to get a bitmap to draw on... " + mMap.size());
     while (iterator.hasNext()) {
       Map.Entry<String, Bitmap> entry = iterator.next();
       if (entry == null) {
+        Log.d("TV", "got a null entry when iterating memory cache entry set, quit");
         break;
       }
       String key = entry.getKey();
+      Log.d("TV", "see if " + key + " is usable");
       if (mEmployed.contains(key)) {
+        Log.d("TV", key + " is employed, can't use it");
         continue;
       }
       Bitmap candidate = entry.getValue();
       if (canUseForInBitmap(candidate, options)) {
         iterator.remove();
         return candidate;
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        Log.d("TV", "bitmap of size: " + candidate.getAllocationByteCount() + " did not qualify");
       }
     }
     return null;

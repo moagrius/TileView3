@@ -7,7 +7,6 @@ import android.graphics.Rect;
 import android.graphics.Region;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
 
@@ -30,8 +29,8 @@ public class TileView extends View implements
     Tile.DrawingView {
 
   //private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
-  private static final int MEMORY_CACHE_SIZE = 1024 * 5;
-  private static final int DISK_CACHE_SIZE = 1;  // DUM DUM DUMMMM
+  private static final int MEMORY_CACHE_SIZE = 1024 * 20;
+  private static final int DISK_CACHE_SIZE = 1024 * 200;
 
   private float mScale = 1f;
   private int mZoom = 0;
@@ -307,8 +306,8 @@ public class TileView extends View implements
           try {
             tile.decode(getContext());
           } catch (Exception e) {
-            Log.d("TV", "exception decoding: " + e.getClass().getCanonicalName() + ":" + e.getMessage());
-            e.printStackTrace();
+//            Log.d("TV", "exception decoding: " + e.getClass().getCanonicalName() + ":" + e.getMessage());
+//            e.printStackTrace();
           }
         });
       }

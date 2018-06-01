@@ -24,6 +24,7 @@ public class Tile {
 
   private int mStartRow;
   private int mStartColumn;
+  private String mCacheKey;
   private State mState = State.IDLE;
   private Bitmap mBitmap;
   private int mImageSample = 1;
@@ -96,9 +97,11 @@ public class Tile {
   }
 
   private String getCacheKey() {
-    // TODO: lazy
-    String normalized = getFilePath().replace(".", "_").replace("/", "_");
-    return String.format(Locale.US, "%1$s-%2$s", normalized, mImageSample);
+    if (mCacheKey == null) {
+      String normalized = getFilePath().replace(".", "_").replace("/", "_");
+      mCacheKey = String.format(Locale.US, "%1$s-%2$s", normalized, mImageSample);
+    }
+    return mCacheKey;
   }
 
   // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
@@ -113,6 +116,7 @@ public class Tile {
     String key = getCacheKey();
     Bitmap cached = mMemoryCache.get(key);
     if (cached != null) {
+      Log.d("TV", "we're using a cached bitmap");
       mMemoryCache.setEmployed(key, true);
       mBitmap = cached;
       mState = State.DECODED;
@@ -125,7 +129,6 @@ public class Tile {
     if (isSubSampled) {
       cached = mDiskCache.get(key);
       if (cached != null) {
-        mMemoryCache.setEmployed(key, true);
         mBitmap = cached;
         mState = State.DECODED;
         mDrawingView.postInvalidate();
@@ -154,8 +157,10 @@ public class Tile {
       mState = State.DECODED;
       mDrawingView.postInvalidate();
       mMemoryCache.put(key, mBitmap);
+      //mMemoryCache.setEmployed(key, true);
       mDiskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
+      Log.d("TV", "we must decode, try to reuse a different bitmap from memory cache to draw over");
       String file = getFilePath();
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
@@ -168,6 +173,7 @@ public class Tile {
         mState = State.DECODED;
         mDrawingView.postInvalidate();
         mMemoryCache.put(key, mBitmap);
+        //mMemoryCache.setEmployed(key, true);
       }
     }
   }
@@ -181,6 +187,7 @@ public class Tile {
   public void destroy() {
     mBitmap = null;
     mState = State.IDLE;
+    Log.d("TV", "freeing bitmap: " + getCacheKey());
     mMemoryCache.setEmployed(getCacheKey(), false);
     if (mThread != null && mThread.isAlive()) {
       mThread.interrupt();
@@ -220,6 +227,8 @@ public class Tile {
     if (bitmap != null) {
       Log.d("TV", "we are reusing a bitmap");
       mDecodeOptions.inBitmap = bitmap;
+    } else {
+      Log.d("TV", "we couldn't get a bitmap to draw on");
     }
   }
 
