@@ -5,16 +5,13 @@ import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.util.Log;
 
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class MemoryCache implements TileView.Cache {
 
   private LinkedHashMap<String, Bitmap> mMap = new LinkedHashMap<>(0, 0.75f, true);
-  private Set<String> mEmployed = new HashSet<>();
   private int mMaxSize;
   private int mSize;
 
@@ -27,15 +24,10 @@ public class MemoryCache implements TileView.Cache {
     return mMap.get(key);
   }
 
-  public synchronized void setEmployed(String key, boolean employed) {
-    if (employed) {
-      mEmployed.add(key);
-    } else {
-      mEmployed.remove(key);
-    }
-  }
-
   public synchronized Bitmap put(String key, Bitmap value) {
+    if (value == null) {
+      return null;
+    }
     Log.d("TV", "putting a bitmap in memory cache: " + mMap.size());
     mSize += sizeOf(value);
     Bitmap previous = mMap.put(key, value);
@@ -44,6 +36,14 @@ public class MemoryCache implements TileView.Cache {
     }
     trimToSize(mMaxSize);
     return previous;
+  }
+
+  public synchronized void remove(String key) {
+    if (mMap.containsKey(key)) {
+      Bitmap bitmap = mMap.get(key);
+      mSize -= sizeOf(bitmap);
+      mMap.remove(key);
+    }
   }
 
   private void trimToSize(int maxSize) {
@@ -65,6 +65,7 @@ public class MemoryCache implements TileView.Cache {
   }
 
   public synchronized Bitmap getBitmapForReuse(BitmapFactory.Options options) {
+    // TODO: probably just go through value set
     Iterator<Map.Entry<String, Bitmap>> iterator = mMap.entrySet().iterator();
     Log.d("TV", "try to get a bitmap to draw on... " + mMap.size());
     while (iterator.hasNext()) {
@@ -73,17 +74,12 @@ public class MemoryCache implements TileView.Cache {
         Log.d("TV", "got a null entry when iterating memory cache entry set, quit");
         break;
       }
-      String key = entry.getKey();
-      Log.d("TV", "see if " + key + " is usable");
-      if (mEmployed.contains(key)) {
-        Log.d("TV", key + " is employed, can't use it");
-        continue;
-      }
+      Log.d("TV", "see if " + entry.getKey() + " is usable");
       Bitmap candidate = entry.getValue();
       if (canUseForInBitmap(candidate, options)) {
         Log.d("TV", "removing to be used");
+        // remember to reduce size here
         mSize -= sizeOf(candidate);
-        setEmployed(key, true);
         iterator.remove();
         return candidate;
       }

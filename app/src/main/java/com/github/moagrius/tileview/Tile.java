@@ -117,7 +117,7 @@ public class Tile {
     Bitmap cached = mMemoryCache.get(key);
     if (cached != null) {
       Log.d("TV", "we're using a cached bitmap");
-      mMemoryCache.setEmployed(key, true);
+      mMemoryCache.remove(key);
       mBitmap = cached;
       mState = State.DECODED;
       mDrawingView.postInvalidate();
@@ -156,8 +156,6 @@ public class Tile {
       }
       mState = State.DECODED;
       mDrawingView.postInvalidate();
-      mMemoryCache.put(key, mBitmap);
-      //mMemoryCache.setEmployed(key, true);
       mDiskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
       Log.d("TV", "we must decode, try to reuse a different bitmap from memory cache to draw over");
@@ -165,15 +163,13 @@ public class Tile {
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
         // measure it for bitmap reuse
-        BitmapFactory.decodeStream(stream, null, mMeasureOptions);
-        attemptBitmapReuse();
+        //BitmapFactory.decodeStream(stream, null, mMeasureOptions);
+        //attemptBitmapReuse();
         // now decode
         stream.reset();
         mBitmap = BitmapFactory.decodeStream(stream, null, mDecodeOptions);
         mState = State.DECODED;
         mDrawingView.postInvalidate();
-        mMemoryCache.put(key, mBitmap);
-        mMemoryCache.setEmployed(key, true);
       }
     }
   }
@@ -185,10 +181,10 @@ public class Tile {
   }
 
   public void destroy() {
+    mMemoryCache.put(getCacheKey(), mBitmap);
     mBitmap = null;
     mState = State.IDLE;
     Log.d("TV", "freeing bitmap: " + getCacheKey());
-    mMemoryCache.setEmployed(getCacheKey(), false);
     if (mThread != null && mThread.isAlive()) {
       mThread.interrupt();
     }
