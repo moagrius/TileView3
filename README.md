@@ -53,6 +53,7 @@ for (int i = grid.columns.start; i < grid.columns.end; i += imageSample) {
 (2,0), (2,1), (2,2), (2,3)
 (3,0), (3,1), (3,2), (3,3)
 ```
+- use a diskcache for these so we don't have to decode 4x the data that we need - once we've stitched a bitmap together, that goes in both the memory cache and the disk cache
 - the next thing that comes up is when changing between zoom levels - whether that's a defined, supplied detail level, or just subsampling the tiles - since View.onDraw uses a Canvas, we need to redraw the entire thing each time invalidation occurs.  That means if you switch between zoom level, the canvas will clear the old tiles before drawing the new tiles.  This behavior is generally good (and what ensures that we're generally only going to drawing as much bitmap data as we need to fill the screen, even if we do a bad job of cleaning up), but in this case the visual effect is jarring.
 - to remedy this, we:
   - populate a Region instance with the virtual viewport (scaled)
@@ -61,3 +62,4 @@ for (int i = grid.columns.start; i < grid.columns.end; i += imageSample) {
     - if a previous tile does intersect this unfilled region, we need to draw it.
     - if a previous tile does *not* intersect this unfilled region, that means we have completely covered that area with pixel data from the new level, and can both destroy the previous tile (and it's bitmap), as well as remove it from the list of previous tiles we're testing
       - since we remove every previous tile that's covered by current tiles, this set will become empty once the current viewport is filled with current pixel data.
+- the next issue is caching and bitmap re-use.  for now, we're only using files from disk (assets), so the only thing that goes into disk-cache are the stitched tiles.  however, we do use an aggressive memory cache (defaults to one-quarter of availalbe ram).  this serves as both a straight bitmap cache, and a pool of re-usable objects.  when we first go to decode a tile, we check if that exact bitmap is in the memory cache - if it is, great, use it - if it's not, grab the oldest bitmap in the cache and re-use the underlying bitmap (BitmapFactory.Options.inBitmap) - this significantly speeds up the decode process.
