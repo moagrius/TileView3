@@ -14,7 +14,6 @@ import android.view.ViewParent;
 import com.github.moagrius.utils.Debounce;
 import com.github.moagrius.utils.Maths;
 import com.github.moagrius.utils.SimpleObjectPool;
-import com.github.moagrius.utils.Throttler;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
@@ -56,8 +55,7 @@ public class TileView extends View implements
   private Region mUnfilledRegion = new Region();
 
   private TileRenderExecutor mExecutor = new TileRenderExecutor();
-  private Debounce mDebounce = new Debounce(10);
-  private Throttler mThrottler = new Throttler(10);
+  private Debounce mDebounce = new Debounce(15);
 
   private DiskCache mDiskCache;
   private MemoryCache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
@@ -254,7 +252,7 @@ public class TileView extends View implements
   }
 
   private void updateViewportAndComputeTilesThrottled() {
-    mThrottler.attempt(mUpdateAndComputeTilesRunnable);
+    mDebounce.attempt(mUpdateAndComputeTilesRunnable);
   }
 
   @Override

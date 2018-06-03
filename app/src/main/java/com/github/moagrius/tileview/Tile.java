@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.util.Log;
 
 import com.github.moagrius.utils.Hashes;
 
@@ -44,6 +45,7 @@ public class Tile implements Runnable {
       mThread.interrupt();
     }
     mThreadPoolExecutor.remove(this);
+    mMemoryCache.put(getCacheKey(), mBitmap);
     mBitmap = null;
     mState = State.IDLE;
     mListener.onTileDestroyed(this);
@@ -126,15 +128,15 @@ public class Tile implements Runnable {
     mThread = Thread.currentThread();
     // putting a thread.sleep of even 100ms here shows that maybe we're doing work off screen that we should not be doing
     updateDestinationRect();
-//    String key = getCacheKey();
-//    Bitmap cached = mMemoryCache.get(key);
-//    if (cached != null) {
-//      Log.d("TV", "cache hit");
-//      mBitmap = cached;
-//      mState = State.DECODED;
-//      mDrawingView.postInvalidate();
-//      return;
-//    }
+    String key = getCacheKey();
+    Bitmap cached = mMemoryCache.get(key);
+    if (cached != null) {
+      Log.d("TV", "cache hit");
+      mBitmap = cached;
+      mState = State.DECODED;
+      mDrawingView.postInvalidate();
+      return;
+    }
     mState = State.DECODING;
     // if image sample is greater than 1, we should cache the downsampled versions on disk
     boolean isSubSampled = mImageSample > 1;
@@ -174,8 +176,7 @@ public class Tile implements Runnable {
       String file = getFilePath();
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
-        Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mOptions);
-        mBitmap = bitmap;
+        mBitmap = BitmapFactory.decodeStream(stream, null, mOptions);
         mState = State.DECODED;
         mDrawingView.postInvalidate();
         //mMemoryCache.put(key, bitmap);

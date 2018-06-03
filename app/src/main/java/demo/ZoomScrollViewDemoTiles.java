@@ -18,8 +18,8 @@ public class ZoomScrollViewDemoTiles extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_demos_zoomscrollview_tileview);
     TileView tileView = findViewById(R.id.tileview);
-    //tileView.defineZoomLevel("tiles/phi-1000000-%1$d_%2$d.jpg");
-    tileView.defineZoomLevel("tiles/phi-500000-%1$d_%2$d.jpg");
+    tileView.defineZoomLevel("tiles/phi-1000000-%1$d_%2$d.jpg");
+    //tileView.defineZoomLevel("tiles/phi-500000-%1$d_%2$d.jpg");
     //tileView.defineZoomLevel(1, "tiles/phi-500000-%1$d_%2$d.jpg");
     //tileView.defineZoomLevel(2, "tiles/phi-250000-%1$d_%2$d.jpg");
   }
