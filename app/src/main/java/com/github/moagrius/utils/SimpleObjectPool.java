@@ -23,7 +23,7 @@ public class SimpleObjectPool<T> {
     return mFactory.create();
   }
 
-  public void put(T t) {
+  public synchronized void put(T t) {
     if (t != null) {
       mQueue.add(new SoftReference<>(t));
     }

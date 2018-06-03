@@ -24,7 +24,6 @@ public class MemoryCache implements TileView.Cache {
   }
 
   public synchronized Bitmap get(String key) {
-    Log.d("TV", "getting a bitmap from memory cache: " + mMap.size());
     return mMap.get(key);
   }
 
@@ -32,7 +31,6 @@ public class MemoryCache implements TileView.Cache {
     if (value == null) {
       return null;
     }
-    Log.d("TV", "putting a bitmap in memory cache: " + mMap.size());
     mSize += sizeOf(value);
     Bitmap previous = mMap.put(key, value);
     if (previous != null) {
@@ -51,17 +49,14 @@ public class MemoryCache implements TileView.Cache {
   }
 
   private void trimToSize(int maxSize) {
-    Log.d("TV", "calling trimToSize");
     while (mSize > maxSize && !mMap.isEmpty()) {
       Map.Entry<String, Bitmap> oldest =  mMap.entrySet().iterator().next();
       if (oldest == null) {
         break;
       }
-      Log.d("TV", "removing in trimToSize");
       mMap.remove(oldest.getKey());
       mSize -= sizeOf(oldest.getValue());
     }
-    Log.d("TV", "done with trimToSize, " + mMap.size());
   }
 
   private int sizeOf(Bitmap bitmap) {
@@ -69,48 +64,33 @@ public class MemoryCache implements TileView.Cache {
   }
 
   public synchronized Bitmap getBitmapForReuse(BitmapFactory.Options options) {
-    // TODO: probably just go through value set
     if (mMap.isEmpty()) {
       return null;
     }
-    Iterator<Map.Entry<String, Bitmap>> iterator = mMap.entrySet().iterator();
-    Log.d("TV", "try to get a bitmap to draw on... " + mMap.size());
+    Iterator<Bitmap> iterator = mMap.values().iterator();
     while (iterator.hasNext()) {
-      Map.Entry<String, Bitmap> entry = iterator.next();
-      if (entry == null) {
-        Log.d("TV", "got a null entry when iterating memory cache entry set, quit");
+      Bitmap candidate = iterator.next();
+      if (candidate == null) {
+        Log.d("TV", "got a null bitmap when iterating memory cache, quit");
         break;
       }
-      Log.d("TV", "see if " + entry.getKey() + " is usable");
-      Bitmap candidate = entry.getValue();
       if (canUseForInBitmap(candidate, options)) {
-        Log.d("TV", "removing to be used");
-        // remember to reduce size here
-        mSize -= sizeOf(candidate);
         iterator.remove();
+        mSize -= sizeOf(candidate);
         candidate.eraseColor(Color.BLACK);
         return candidate;
-      }
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-        Log.d("TV", "bitmap of size: " + candidate.getAllocationByteCount() + " did not qualify");
       }
     }
     return null;
   }
 
   private static boolean canUseForInBitmap(Bitmap candidate, BitmapFactory.Options targetOptions) {
-
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-      // From Android 4.4 (KitKat) onward we can re-use if the byte size of
-      // the new bitmap is smaller than the reusable bitmap candidate
-      // allocation byte count.
       int width = targetOptions.outWidth / targetOptions.inSampleSize;
       int height = targetOptions.outHeight / targetOptions.inSampleSize;
       int byteCount = width * height * getBytesPerPixel(candidate.getConfig());
       return byteCount <= candidate.getAllocationByteCount();
     }
-
-    // On earlier versions, the dimensions must match exactly and the inSampleSize must be 1
     return candidate.getWidth() == targetOptions.outWidth
         && candidate.getHeight() == targetOptions.outHeight
         && targetOptions.inSampleSize == 1;

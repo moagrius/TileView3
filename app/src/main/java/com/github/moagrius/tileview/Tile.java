@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Rect;
 import android.util.Log;
 
@@ -27,6 +26,7 @@ public class Tile implements Runnable {
   private State mState = State.IDLE;
   private Bitmap mBitmap;
   private int mImageSample = 1;
+  private String mCacheKey;
   private Detail mDetail;
   private DrawingView mDrawingView;
   private Listener mListener;
@@ -47,7 +47,9 @@ public class Tile implements Runnable {
     }
     mDrawingOptions.inBitmap = null;
     mThreadPoolExecutor.remove(this);
-    mMemoryCache.put(getCacheKey(), mBitmap);
+    if (mState == State.DECODED) {
+      mMemoryCache.put(getCacheKey(), mBitmap);
+    }
     mBitmap = null;
     mState = State.IDLE;
     mListener.onTileDestroyed(this);
@@ -87,6 +89,8 @@ public class Tile implements Runnable {
 
   public void setImageSample(int imageSample) {
     mImageSample = imageSample;
+    mDrawingOptions.inSampleSize = mImageSample;
+    mMeasureOptions.inSampleSize = mImageSample;
   }
 
   public void setDetail(Detail detail) {
@@ -116,9 +120,11 @@ public class Tile implements Runnable {
   }
 
   private String getCacheKey() {
-    // TODO: lazy
-    String normalized = getFilePath().replace(".", "_").replace("/", "_");
-    return String.format(Locale.US, "%1$s-%2$s", normalized, mImageSample);
+    if (mCacheKey == null) {
+      String normalized = getFilePath().replace(".", "_").replace("/", "_");
+      mCacheKey = String.format(Locale.US, "%1$s-%2$s", normalized, mImageSample);
+    }
+    return mCacheKey;
   }
 
   // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
@@ -132,7 +138,7 @@ public class Tile implements Runnable {
     String key = getCacheKey();
     Bitmap cached = mMemoryCache.get(key);
     if (cached != null) {
-      Log.d("TV", "cache hit");
+      Log.d("TV", "cache hit for " + key);
       mMemoryCache.remove(key);
       mBitmap = cached;
       mState = State.DECODED;
@@ -143,19 +149,28 @@ public class Tile implements Runnable {
     // if image sample is greater than 1, we should cache the downsampled versions on disk
     boolean isSubSampled = mImageSample > 1;
     if (isSubSampled) {
-//      cached = mDiskCache.get(key);
-//      if (cached != null) {
-//        mBitmap = cached;
-//        mState = State.DECODED;
-//        mDrawingView.postInvalidate();
-//        return;
-//      }
+      cached = mDiskCache.get(key);
+      if (cached != null) {
+        mBitmap = cached;
+        mState = State.DECODED;
+        mDrawingView.postInvalidate();
+        return;
+      }
       // if we're patching, we need a base bitmap to draw on
       if (mBitmap == null) {
-        mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, Bitmap.Config.RGB_565);
+        // let's try to use one from the cache if we have one
+        // we need to fake the measurements
+        mMeasureOptions.outWidth = TILE_SIZE;
+        mMeasureOptions.outHeight = TILE_SIZE;
+        // TODO: this is actually emulate sample size 1 - should measureOptions always be sample size 1?
+        mMeasureOptions.inSampleSize = 1;
+        mBitmap = mMemoryCache.getBitmapForReuse(mMeasureOptions);
+        if (mBitmap == null) {
+          mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, mDrawingOptions.inPreferredConfig);
+        }
+        // can we now draw directly onto mBitmap using mDrawingOptions.inBitmap?
       }
       Canvas canvas = new Canvas(mBitmap);
-      canvas.drawColor(Color.GREEN);
       String template = mDetail.getUri();
       int size = TILE_SIZE / mImageSample;
       for (int i = 0; i < mImageSample; i++) {
@@ -168,24 +183,30 @@ public class Tile implements Runnable {
           }
         }
       }
+      // if it got destroyed while we were decoding...
+      if (mState != State.DECODING) {
+        return;
+      }
       mState = State.DECODED;
       mDrawingView.postInvalidate();
-     // mMemoryCache.put(key, mBitmap);
-      //mDiskCache.put(key, mBitmap);
+      mDiskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
       String file = getFilePath();
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
+        // measure it and populate measure options to pass to cache
         BitmapFactory.decodeStream(stream, null, mMeasureOptions);
+        // if we made it this far, the exact bitmap wasn't in memory, but let's grab the least recently used bitmap from the cache and draw over it
         mDrawingOptions.inBitmap = mMemoryCache.getBitmapForReuse(mMeasureOptions);
-        if (mDrawingOptions.inBitmap != null) {
-          Log.d("TV", "reusing bitmap");
-        }
+        // the measurement moved the stream's position - it must be reset to use the same stream to draw pixels
         stream.reset();
         mBitmap = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
+        // if it got destroyed while we were decoding...
+        if (mState != State.DECODING) {
+          return;
+        }
         mState = State.DECODED;
         mDrawingView.postInvalidate();
-        //mMemoryCache.put(key, bitmap);
       }
     }
   }

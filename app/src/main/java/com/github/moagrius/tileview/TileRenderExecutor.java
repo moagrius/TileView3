@@ -16,9 +16,6 @@ public class TileRenderExecutor extends ThreadPoolExecutor {
   public void queue(Set<Tile> renderSet) {
     for (Runnable runnable : getQueue()) {
       Tile tile = (Tile) runnable;
-      if (tile.getState() != Tile.State.IDLE) {
-        continue;
-      }
       if (!renderSet.contains(tile)) {
         tile.destroy();
       }
