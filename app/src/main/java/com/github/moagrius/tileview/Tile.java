@@ -38,23 +38,6 @@ public class Tile implements Runnable {
   private DiskCache mDiskCache;
   private ThreadPoolExecutor mThreadPoolExecutor;
 
-  public void destroy() {
-    if (mState == State.IDLE) {
-      return;
-    }
-    if(mThread != null && mThread.isAlive()) {
-      mThread.interrupt();
-    }
-    mDrawingOptions.inBitmap = null;
-    mThreadPoolExecutor.remove(this);
-    if (mState == State.DECODED) {
-      mMemoryCache.put(getCacheKey(), mBitmap);
-    }
-    mBitmap = null;
-    mState = State.IDLE;
-    mListener.onTileDestroyed(this);
-  }
-
   public void setListener(Listener listener) {
     mListener = listener;
   }
@@ -128,10 +111,11 @@ public class Tile implements Runnable {
   }
 
   // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
-  public void decode(Context context) throws Exception {
+  public void decode() throws Exception {
     if (mState != State.IDLE) {
       return;
     }
+    Context context = mDrawingView.getContext();
     mThread = Thread.currentThread();
     // putting a thread.sleep of even 100ms here shows that maybe we're doing work off screen that we should not be doing
     updateDestinationRect();
@@ -210,12 +194,29 @@ public class Tile implements Runnable {
       }
     }
   }
+
+  public void destroy() {
+    if (mState == State.IDLE) {
+      return;
+    }
+    if(mThread != null && mThread.isAlive()) {
+      mThread.interrupt();
+    }
+    mDrawingOptions.inBitmap = null;
+    mThreadPoolExecutor.remove(this);
+    if (mState == State.DECODED) {
+      mMemoryCache.put(getCacheKey(), mBitmap);
+    }
+    mBitmap = null;
+    mState = State.IDLE;
+    mListener.onTileDestroyed(this);
+  }
   
   public void run() {
     try {
-      decode(mDrawingView.getContext());
+      decode();
     } catch (Exception e) {
-      e.printStackTrace();
+      mListener.onTileDecodeError(e);
     }
   }
 
@@ -239,7 +240,7 @@ public class Tile implements Runnable {
 
   @Override
   public int hashCode() {
-    return Hashes.compute(17, 31, mStartColumn, mStartRow, mImageSample);
+    return Hashes.compute(17, 31, mStartColumn, mStartRow, mImageSample, mDetail.getZoom());
   }
 
   public interface DrawingView {
@@ -249,6 +250,7 @@ public class Tile implements Runnable {
 
   public interface Listener {
     void onTileDestroyed(Tile tile);
+    void onTileDecodeError(Exception e);
   }
 
 }

@@ -303,6 +303,9 @@ public class TileView extends View implements
     }
     // we just removed all tiles outside of the viewport, now add any new ones that are in the viewport that weren't there the last
     // time we performed this computation
+    // we use add all instead of straight replacement because lets say tile(3:2) was being decoded - when tile(3:2) comes up in
+    // mNewlyVisibleTiles, it won't be added to mTilesVisibleInViewport because Tile.equals will return true
+    // if we just swapped out the set (mTilesVisibleInViewport = mNewlyVisibleTiles), all those tiles would lose their state
     mTilesVisibleInViewport.addAll(mNewlyVisibleTiles);
     mExecutor.queue(mTilesVisibleInViewport);
   }
@@ -310,6 +313,11 @@ public class TileView extends View implements
   @Override
   public void onTileDestroyed(Tile tile) {
     mTilePool.put(tile);
+  }
+
+  @Override
+  public void onTileDecodeError(Exception e) {
+    // no op for now
   }
 
   private static class Grid {

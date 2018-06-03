@@ -74,7 +74,7 @@ public class MemoryCache implements TileView.Cache {
         Log.d("TV", "got a null bitmap when iterating memory cache, quit");
         break;
       }
-      if (canUseForInBitmap(candidate, options)) {
+      if (qualifies(candidate, options)) {
         iterator.remove();
         mSize -= sizeOf(candidate);
         candidate.eraseColor(Color.BLACK);
@@ -84,7 +84,7 @@ public class MemoryCache implements TileView.Cache {
     return null;
   }
 
-  private static boolean canUseForInBitmap(Bitmap candidate, BitmapFactory.Options targetOptions) {
+  private static boolean qualifies(Bitmap candidate, BitmapFactory.Options targetOptions) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
       int width = targetOptions.outWidth / targetOptions.inSampleSize;
       int height = targetOptions.outHeight / targetOptions.inSampleSize;
