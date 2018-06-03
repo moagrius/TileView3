@@ -32,7 +32,8 @@ public class Tile implements Runnable {
   private Listener mListener;
   private Thread mThread;
   private Rect mDestinationRect = new Rect();
-  private BitmapFactory.Options mOptions;
+  private BitmapFactory.Options mDrawingOptions = new TileOptions(false);
+  private BitmapFactory.Options mMeasureOptions = new TileOptions(true);
   private MemoryCache mMemoryCache;
   private DiskCache mDiskCache;
   private ThreadPoolExecutor mThreadPoolExecutor;
@@ -44,6 +45,7 @@ public class Tile implements Runnable {
     if(mThread != null && mThread.isAlive()) {
       mThread.interrupt();
     }
+    mDrawingOptions.inBitmap = null;
     mThreadPoolExecutor.remove(this);
     mMemoryCache.put(getCacheKey(), mBitmap);
     mBitmap = null;
@@ -80,7 +82,7 @@ public class Tile implements Runnable {
   }
 
   public void setOptions(BitmapFactory.Options options) {
-    mOptions = options;
+    mDrawingOptions = options;
   }
 
   public void setImageSample(int imageSample) {
@@ -161,10 +163,8 @@ public class Tile implements Runnable {
           String file = String.format(Locale.US, template, mStartColumn + j, mStartRow + i);
           InputStream stream = context.getAssets().open(file);
           if (stream != null) {
-            Bitmap piece = BitmapFactory.decodeStream(stream, null, mOptions);
-            int left = j * size;
-            int top = i * size;
-            canvas.drawBitmap(piece, left, top, null);
+            Bitmap piece = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
+            canvas.drawBitmap(piece, j * size, i * size, null);
           }
         }
       }
@@ -176,7 +176,13 @@ public class Tile implements Runnable {
       String file = getFilePath();
       InputStream stream = context.getAssets().open(file);
       if (stream != null) {
-        mBitmap = BitmapFactory.decodeStream(stream, null, mOptions);
+        BitmapFactory.decodeStream(stream, null, mMeasureOptions);
+        mDrawingOptions.inBitmap = mMemoryCache.getBitmapForReuse(mMeasureOptions);
+        if (mDrawingOptions.inBitmap != null) {
+          Log.d("TV", "reusing bitmap");
+        }
+        stream.reset();
+        mBitmap = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
         mState = State.DECODED;
         mDrawingView.postInvalidate();
         //mMemoryCache.put(key, bitmap);
@@ -193,7 +199,7 @@ public class Tile implements Runnable {
   }
 
   public void draw(Canvas canvas) {
-    if (mState == State.DECODED) {
+    if (mState == State.DECODED && mBitmap != null) {
       canvas.drawBitmap(mBitmap, null, mDestinationRect, null);
     }
   }

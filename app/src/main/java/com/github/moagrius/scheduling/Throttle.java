@@ -1,4 +1,4 @@
-package com.github.moagrius.utils;
+package com.github.moagrius.scheduling;
 
 import android.view.animation.AnimationUtils;
 
@@ -16,20 +16,22 @@ import android.view.animation.AnimationUtils;
  * Created by michaeldunn on 3/2/17.
  */
 
-public class Throttler {
+public class Throttle {
 
   private long mLastFiredTimestamp;
   private long mInterval;
 
-  public Throttler(long interval) {
+  public Throttle(long interval) {
     mInterval = interval;
   }
 
-  public void attempt(Runnable runnable) {
+  public boolean attempt(Runnable runnable) {
     if (hasSatisfiedInterval()) {
       runnable.run();
       mLastFiredTimestamp = getNow();
+      return true;
     }
+    return false;
   }
 
   private boolean hasSatisfiedInterval() {

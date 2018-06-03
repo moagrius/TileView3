@@ -2,7 +2,6 @@ package com.github.moagrius.tileview;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.Region;
@@ -11,7 +10,8 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewParent;
 
-import com.github.moagrius.utils.Debounce;
+import com.github.moagrius.scheduling.Debounce;
+import com.github.moagrius.scheduling.Scheduler;
 import com.github.moagrius.utils.Maths;
 import com.github.moagrius.utils.SimpleObjectPool;
 import com.github.moagrius.widget.ScrollView;
@@ -30,8 +30,6 @@ public class TileView extends View implements
 
   private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
   private static final int DISK_CACHE_SIZE = 1024 * 20;
-
-  private BitmapFactory.Options mBitmapOptions = new TileOptions();
 
   private float mScale = 1f;
   private int mZoom = 0;
@@ -55,7 +53,8 @@ public class TileView extends View implements
   private Region mUnfilledRegion = new Region();
 
   private TileRenderExecutor mExecutor = new TileRenderExecutor();
-  private Debounce mDebounce = new Debounce(30);
+  private Scheduler mRenderScheduler = new Scheduler(30);
+  private Debounce mInvalidationDebounce = new Debounce(10);
 
   private DiskCache mDiskCache;
   private MemoryCache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
@@ -172,16 +171,12 @@ public class TileView extends View implements
       mLastValidDetail = mDetailList.getHighestDefined();
       int zoomDelta = mZoom - mLastValidDetail.getZoom();
       mImageSample = 1 << zoomDelta;
-      mBitmapOptions = new TileOptions();
-      mBitmapOptions.inSampleSize = mImageSample;
       return;
     }
     // best case, it's an exact match, use that and set sample to 1
     Detail exactMatch = mDetailList.get(mZoom);
     if (exactMatch != null) {
       mLastValidDetail = exactMatch;
-      mBitmapOptions = new TileOptions();
-      mImageSample = mBitmapOptions.inSampleSize = 1;
       return;
     }
     // it's not bigger than what we have defined, but we don't have an exact match, start at the requested zoom and work back
@@ -192,8 +187,6 @@ public class TileView extends View implements
         mLastValidDetail = current;
         int zoomDelta = mZoom - mLastValidDetail.getZoom();
         mImageSample = 1 << zoomDelta;
-        mBitmapOptions = new TileOptions();
-        mBitmapOptions.inSampleSize = mImageSample;
         return;
       }
     }
@@ -252,12 +245,12 @@ public class TileView extends View implements
   }
 
   private void updateViewportAndComputeTilesThrottled() {
-    mDebounce.attempt(mUpdateAndComputeTilesRunnable);
+    mRenderScheduler.attempt(mUpdateAndComputeTilesRunnable);
   }
 
   @Override
   public void postInvalidate() {
-    mDebounce.attempt(this::originalInvalidate);
+    mInvalidationDebounce.attempt(this::originalInvalidate);
   }
 
   private void originalInvalidate() {
@@ -285,10 +278,8 @@ public class TileView extends View implements
     populateTileGridFromViewport();
     for (int row = mGrid.rows.start; row < mGrid.rows.end; row += mImageSample) {
       for (int column = mGrid.columns.start; column < mGrid.columns.end; column += mImageSample) {
-        // TODO: recycle tiles
         Tile tile = mTilePool.get();
         tile.setThreadPoolExecutor(mExecutor);
-        tile.setOptions(mBitmapOptions);
         tile.setStartColumn(column);
         tile.setStartRow(row);
         tile.setImageSample(mImageSample);

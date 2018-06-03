@@ -1,4 +1,4 @@
-package com.github.moagrius.utils;
+package com.github.moagrius.scheduling;
 
 import android.os.Handler;
 
