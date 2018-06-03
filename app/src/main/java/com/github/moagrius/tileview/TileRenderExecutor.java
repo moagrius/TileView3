@@ -1,5 +1,6 @@
 package com.github.moagrius.tileview;
 
+import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -7,20 +8,21 @@ import java.util.concurrent.TimeUnit;
 
 public class TileRenderExecutor extends ThreadPoolExecutor {
 
-  private static final int AVAILABLE_PROCESSORS = Runtime.getRuntime().availableProcessors();
+  public TileRenderExecutor(int cores) {
+    super(cores, cores, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<>());
+  }
 
   public TileRenderExecutor() {
-    super(AVAILABLE_PROCESSORS, AVAILABLE_PROCESSORS, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<>());
+    this(Runtime.getRuntime().availableProcessors());
   }
 
   public void queue(Set<Tile> renderSet) {
-    for (Runnable runnable : getQueue()) {
-      Tile tile = (Tile) runnable;
-      if (tile.getState() != Tile.State.IDLE) {
-        continue;
-      }
+    Iterator<Runnable> iterator = getQueue().iterator();
+    while (iterator.hasNext()) {
+      Tile tile = (Tile) iterator.next();
       if (!renderSet.contains(tile)) {
-        tile.destroy();
+        tile.destroy(false);
+        iterator.remove();
       }
     }
     for (Tile tile : renderSet) {
