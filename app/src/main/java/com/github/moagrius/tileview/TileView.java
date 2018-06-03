@@ -29,7 +29,7 @@ public class TileView extends View implements
     Tile.Listener {
 
   private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
-  private static final int DISK_CACHE_SIZE = 1024 * 20;
+  private static final int DISK_CACHE_SIZE = 1024 * 100;
 
   private float mScale = 1f;
   private int mZoom = 0;
@@ -61,6 +61,7 @@ public class TileView extends View implements
 
   private SimpleObjectPool<Tile> mTilePool = new SimpleObjectPool<>(Tile::new);
 
+  // this could be a method reference but we're not guaranteed a singleton runnable in that case.  delcare it as a runnable instance for safety
   private Runnable mUpdateAndComputeTilesRunnable = () -> {
     updateViewport();
     computeTilesInCurrentViewport();
@@ -84,6 +85,7 @@ public class TileView extends View implements
     }
   }
 
+  // TODO: use a prepare method (like MediaPlayer) and a background thread for setup
   @Override
   protected void onAttachedToWindow() {
     super.onAttachedToWindow();
@@ -211,19 +213,20 @@ public class TileView extends View implements
   }
 
   private void drawPreviousTiles(Canvas canvas) {
+    establishDirtyRegion();
     if (mUnfilledRegion.isEmpty()) {
       return;
     }
-    Iterator<Tile> tilesFromLastDetailLevelIterator = mPreviouslyDrawnTiles.iterator();
-    while (tilesFromLastDetailLevelIterator.hasNext()) {
-      Tile tile = tilesFromLastDetailLevelIterator.next();
+    Iterator<Tile> iterator = mPreviouslyDrawnTiles.iterator();
+    while (iterator.hasNext()) {
+      Tile tile = iterator.next();
       Rect rect = tile.getDrawingRect();
       // if no part of the rect is in the unfilled area, we don't need it
       // use quickReject instead of quickContains because the latter does not work on complex Regions
       // https://developer.android.com/reference/android/graphics/Region.html#quickContains(android.graphics.Rect)
       if (mUnfilledRegion.quickReject(rect)) {
         tile.destroy();
-        tilesFromLastDetailLevelIterator.remove();
+        iterator.remove();
       } else {
         tile.draw(canvas);
       }
@@ -239,7 +242,6 @@ public class TileView extends View implements
   @Override
   protected void onDraw(Canvas canvas) {
     canvas.scale(mScale, mScale);
-    establishDirtyRegion();
     drawPreviousTiles(canvas);
     drawCurrentTiles(canvas);
   }
@@ -250,6 +252,7 @@ public class TileView extends View implements
 
   @Override
   public void postInvalidate() {
+    // TODO: this might not be necessary...
     mInvalidationDebounce.attempt(this::originalInvalidate);
   }
 
@@ -317,7 +320,7 @@ public class TileView extends View implements
 
   @Override
   public void onTileDecodeError(Exception e) {
-
+    // no op for now, probably expose this to the user
   }
 
   private static class Grid {
