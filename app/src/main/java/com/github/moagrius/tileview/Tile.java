@@ -120,7 +120,6 @@ public class Tile implements Runnable {
   }
 
   // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
-  // TODO: reuse bitmaps https://developer.android.com/topic/performance/graphics/manage-memory
   public void decode(Context context) throws Exception {
     if (mState != State.IDLE) {
       return;
@@ -132,6 +131,7 @@ public class Tile implements Runnable {
     Bitmap cached = mMemoryCache.get(key);
     if (cached != null) {
       Log.d("TV", "cache hit");
+      mMemoryCache.remove(key);
       mBitmap = cached;
       mState = State.DECODED;
       mDrawingView.postInvalidate();

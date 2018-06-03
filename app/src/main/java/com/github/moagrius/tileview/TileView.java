@@ -55,7 +55,7 @@ public class TileView extends View implements
   private Region mUnfilledRegion = new Region();
 
   private TileRenderExecutor mExecutor = new TileRenderExecutor();
-  private Debounce mDebounce = new Debounce(15);
+  private Debounce mDebounce = new Debounce(30);
 
   private DiskCache mDiskCache;
   private MemoryCache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
