@@ -69,5 +69,5 @@ to remedy this, we:
 the next issue is caching and bitmap re-use
 
 ### Bitmap Caching and Re-use
-emphasis on _and reuse - the reuse bit is as important (maybe more) than the traditional "caching" bit.
-for now, we're only using files from disk (assets), so the only thing that goes into disk-cache are the stitched tiles.  however, we do use an aggressive memory cache (defaults to one-quarter of availalbe ram).  this serves as both a straight bitmap cache, and a pool of re-usable objects.  when we first go to decode a tile, we check if that exact bitmap is in the memory cache - if it is, great, use it - if it's not, grab the oldest bitmap in the cache and re-use the underlying bitmap (BitmapFactory.Options.inBitmap) - this significantly speeds up the decode process.
+emphasis on _and reuse_ - the reuse bit is as important (maybe more) than the traditional "caching" bit.
+for now, we're only using files from disk (assets), so the only thing that goes into disk-cache are the stitched tiles.  however, we do use an aggressive memory cache (defaults to one-quarter of availalbe ram).  this serves as both a straight bitmap cache, and a pool of re-usable objects. *when we first go to decode a tile, we check if that exact bitmap is in the memory cache - if it is, great, use it - if it's not, grab the oldest bitmap in the cache and re-use the underlying bitmap (BitmapFactory.Options.inBitmap)* - this significantly speeds up the decode process.
