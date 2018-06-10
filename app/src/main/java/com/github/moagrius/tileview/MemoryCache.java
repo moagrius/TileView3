@@ -4,7 +4,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Build;
-import android.util.Log;
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -71,7 +70,6 @@ public class MemoryCache implements TileView.Cache {
     while (iterator.hasNext()) {
       Bitmap candidate = iterator.next();
       if (candidate == null) {
-        Log.d("TV", "got a null bitmap when iterating memory cache, quit");
         break;
       }
       if (qualifies(candidate, options)) {

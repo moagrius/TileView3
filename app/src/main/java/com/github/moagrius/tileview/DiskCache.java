@@ -16,7 +16,7 @@ import java.io.OutputStream;
 
 public class DiskCache implements TileView.Cache {
 
-  private static final String DIRECTORY_NAME = "com.github.moagrius.TileView";
+  private static final String DIRECTORY_NAME = "tileview-cache";
   private static final int IO_BUFFER_SIZE = 8 * 1024;
 
   private DiskLruCache mDiskCache;

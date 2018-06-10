@@ -24,4 +24,8 @@ public class TilePool {
     }
   }
 
+  public void clear() {
+    mQueue.clear();
+  }
+
 }

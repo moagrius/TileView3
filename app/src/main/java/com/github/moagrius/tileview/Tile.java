@@ -5,9 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.os.Process;
 import android.util.Log;
-
-import com.github.moagrius.utils.Hashes;
 
 import java.io.InputStream;
 import java.util.Locale;
@@ -23,7 +22,7 @@ public class Tile implements Runnable {
 
   private int mStartRow;
   private int mStartColumn;
-  private State mState = State.IDLE;
+  private volatile State mState = State.IDLE;
   private Bitmap mBitmap;
   private int mImageSample = 1;
   private String mCacheKey;
@@ -66,10 +65,6 @@ public class Tile implements Runnable {
     mStartColumn = startColumn;
   }
 
-  public void setOptions(BitmapFactory.Options options) {
-    mDrawingOptions = options;
-  }
-
   public void setImageSample(int imageSample) {
     mImageSample = imageSample;
     mDrawingOptions.inSampleSize = mImageSample;
@@ -110,13 +105,31 @@ public class Tile implements Runnable {
     return mCacheKey;
   }
 
+  // if destroyed by the time this is called, make sure bitmap stays null
+  // otherwise, update state and notify drawing view
+  private void setDecodedBitmap() {
+    if (mState != State.DECODING) {
+      mBitmap = null;
+      return;
+    }
+    mState = State.DECODED;
+    mThread = null;
+    mDrawingView.setDirty(this);
+  }
+
+  private void setDecodedBitmap(Bitmap bitmap) {
+    mBitmap = bitmap;
+    setDecodedBitmap();
+  }
+
   // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
-  public void decode() throws Exception {
+  protected void decode() throws Exception {
     if (mState != State.IDLE) {
       return;
     }
-    Context context = mDrawingView.getContext();
     mThread = Thread.currentThread();
+    // this line is critical on some devices - we're doing so much work off thread that anything higher priority causes jank
+    Process.setThreadPriority(Process.THREAD_PRIORITY_LOWEST);
     // putting a thread.sleep of even 100ms here shows that maybe we're doing work off screen that we should not be doing
     updateDestinationRect();
     String key = getCacheKey();
@@ -124,20 +137,17 @@ public class Tile implements Runnable {
     if (cached != null) {
       Log.d("TV", "cache hit for " + key);
       mMemoryCache.remove(key);
-      mBitmap = cached;
-      mState = State.DECODED;
-      mDrawingView.setDirty();
+      setDecodedBitmap(cached);
       return;
     }
     mState = State.DECODING;
+    Context context = mDrawingView.getContext();
     // if image sample is greater than 1, we should cache the downsampled versions on disk
     boolean isSubSampled = mImageSample > 1;
     if (isSubSampled) {
       cached = mDiskCache.get(key);
       if (cached != null) {
-        mBitmap = cached;
-        mState = State.DECODED;
-        mDrawingView.setDirty();
+        setDecodedBitmap(cached);
         return;
       }
       // if we're patching, we need a base bitmap to draw on
@@ -159,6 +169,10 @@ public class Tile implements Runnable {
       int size = TILE_SIZE / mImageSample;
       for (int i = 0; i < mImageSample; i++) {
         for (int j = 0; j < mImageSample; j++) {
+          // if we got destroyed while decoding, drop out
+          if (mState != State.DECODING) {
+            return;
+          }
           String file = String.format(Locale.US, template, mStartColumn + j, mStartRow + i);
           InputStream stream = context.getAssets().open(file);
           if (stream != null) {
@@ -167,12 +181,7 @@ public class Tile implements Runnable {
           }
         }
       }
-      // if it got destroyed while we were decoding...
-      if (mState != State.DECODING) {
-        return;
-      }
-      mState = State.DECODED;
-      mDrawingView.setDirty();
+      setDecodedBitmap();
       mDiskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
       String file = getFilePath();
@@ -184,13 +193,8 @@ public class Tile implements Runnable {
         mDrawingOptions.inBitmap = mMemoryCache.getBitmapForReuse(mMeasureOptions);
         // the measurement moved the stream's position - it must be reset to use the same stream to draw pixels
         stream.reset();
-        mBitmap = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
-        // if it got destroyed while we were decoding...
-        if (mState != State.DECODING) {
-          return;
-        }
-        mState = State.DECODED;
-        mDrawingView.setDirty();
+        Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
+        setDecodedBitmap(bitmap);
       }
     }
   }
@@ -225,7 +229,7 @@ public class Tile implements Runnable {
     try {
       decode();
     } catch (Exception e) {
-      mListener.onTileDecodeError(e);
+      mListener.onTileDecodeError(this, e);
     }
   }
 
@@ -237,11 +241,13 @@ public class Tile implements Runnable {
 
   @Override
   public boolean equals(Object obj) {
+    if (obj == this) {
+      return true;
+    }
     if (obj instanceof Tile) {
       Tile compare = (Tile) obj;
       return compare.mStartColumn == mStartColumn
           && compare.mStartRow == mStartRow
-          && compare.mImageSample == mImageSample
           && compare.mDetail.getZoom() == mDetail.getZoom();
     }
     return false;
@@ -249,17 +255,21 @@ public class Tile implements Runnable {
 
   @Override
   public int hashCode() {
-    return Hashes.compute(17, 31, mStartColumn, mStartRow, mImageSample, mDetail.getZoom());
+    int hash = 17;
+    hash = hash * 31 + mStartColumn;
+    hash = hash * 31 + mStartRow;
+    hash = hash * 31 + 1000 * mDetail.getZoom();
+    return hash;
   }
 
   public interface DrawingView {
-    void setDirty();
+    void setDirty(Tile tile);
     Context getContext();
   }
 
   public interface Listener {
     void onTileDestroyed(Tile tile);
-    void onTileDecodeError(Exception e);
+    void onTileDecodeError(Tile tile, Exception e);
   }
 
   private static class TileOptions extends BitmapFactory.Options {

@@ -1,23 +1,19 @@
 package com.github.moagrius.tileview;
 
-import android.os.Process;
-
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class TileRenderExecutor extends ThreadPoolExecutor {
 
-  public TileRenderExecutor(int cores) {
-    super(cores, cores, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<>(), task -> {
+  public TileRenderExecutor(int size) {
+    super(size, size, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), task -> {
       Thread thread = new Thread(task);
       thread.setPriority(Thread.MIN_PRIORITY);
-      Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
       return thread;
     });
-    //super(cores, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<>());
   }
 
   public TileRenderExecutor() {

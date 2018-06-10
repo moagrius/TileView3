@@ -12,18 +12,17 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewParent;
 
-import com.github.moagrius.scheduling.Scheduler;
 import com.github.moagrius.utils.Maths;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
 public class TileView extends View implements
+    Handler.Callback,
     ZoomScrollView.ScaleChangedListener,
     ScrollView.ScrollChangedListener,
     Tile.DrawingView,
@@ -31,6 +30,9 @@ public class TileView extends View implements
 
   private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
   private static final int DISK_CACHE_SIZE = 1024 * 100;
+
+  private static final int RENDER_THROTTLE_ID = 0;
+  private static final int RENDER_THROTTLE_INTERVAL = 15;
 
   private float mScale = 1f;
   private int mZoom = 0;
@@ -54,20 +56,14 @@ public class TileView extends View implements
   private Region mUnfilledRegion = new Region();
 
   private TileRenderExecutor mExecutor = new TileRenderExecutor();
-  private Scheduler mRenderScheduler = new Scheduler(30);
 
+  private Handler mRenderThrottleHandler = new Handler(this);
   private boolean mIsDirty;
 
   private DiskCache mDiskCache;
   private MemoryCache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
 
   private TilePool mTilePool = new TilePool();
-
-  // this could be a method reference but we're not guaranteed a singleton runnable in that case.  delcare it as a runnable instance for safety
-  private Runnable mUpdateAndComputeTilesRunnable = () -> {
-    updateViewport();
-    computeTilesInCurrentViewport();
-  };
 
   public TileView(Context context) {
     this(context, null);
@@ -242,7 +238,7 @@ public class TileView extends View implements
   }
 
   @Override
-  public void setDirty() {
+  public void setDirty(Tile tile) {
     if (mIsDirty) {
       return;
     }
@@ -261,26 +257,17 @@ public class TileView extends View implements
     mIsDirty = false;
   }
 
-  private static class TileRenderThrottleHandler extends Handler {
-    private WeakReference<TileView> mTileViewWeakReference;
-    public TileRenderThrottleHandler(TileView tileView) {
-      mTileViewWeakReference = new WeakReference<>(tileView);
-    }
-    @Override
-    public void handleMessage( Message message ) {
-      TileView tileView = mTileViewWeakReference.get();
-      if (tileView != null) {
-        tileView.updateViewport();
-        tileView.computeTilesInCurrentViewport();
-      }
-    }
+  // Implementing Handler.Callback handleMessage to react to throttled requests to start a render op
+  @Override
+  public boolean handleMessage(Message message) {
+    updateViewport();
+    computeTilesInCurrentViewport();
+    return true;
   }
-  private Handler mTileRenderThrottleHandler = new TileRenderThrottleHandler(this);
 
   private void updateViewportAndComputeTilesThrottled() {
-    //mRenderScheduler.attempt(mUpdateAndComputeTilesRunnable);
-    if (!mTileRenderThrottleHandler.hasMessages(0)) {
-      mTileRenderThrottleHandler.sendEmptyMessageDelayed(0, 15);
+    if (!mRenderThrottleHandler.hasMessages(RENDER_THROTTLE_ID)) {
+      mRenderThrottleHandler.sendEmptyMessageDelayed(RENDER_THROTTLE_ID, RENDER_THROTTLE_INTERVAL);
     }
   }
 
@@ -345,8 +332,16 @@ public class TileView extends View implements
   }
 
   @Override
-  public void onTileDecodeError(Exception e) {
+  public void onTileDecodeError(Tile tile, Exception e) {
     // no op for now, probably expose this to the user
+  }
+
+  public void destroy() {
+    mExecutor.shutdownNow();
+    mExecutor = null;
+    mTilePool.clear();
+    mTilePool = null;
+    mRenderThrottleHandler = null;
   }
 
   private static class Grid {
