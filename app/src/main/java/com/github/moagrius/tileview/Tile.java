@@ -33,8 +33,9 @@ public class Tile implements Runnable {
   private Rect mDestinationRect = new Rect();
   private BitmapFactory.Options mDrawingOptions = new TileOptions(false);
   private BitmapFactory.Options mMeasureOptions = new TileOptions(true);
-  private MemoryCache mMemoryCache;
-  private DiskCache mDiskCache;
+  private TileView.BitmapCache mMemoryCache;
+  private TileView.BitmapCache mDiskCache;
+  private TileView.BitmapPool mBitmapPool;
   private ThreadPoolExecutor mThreadPoolExecutor;
 
   public void setListener(Listener listener) {
@@ -45,12 +46,16 @@ public class Tile implements Runnable {
     mThreadPoolExecutor = threadPoolExecutor;
   }
 
-  public void setMemoryCache(MemoryCache memoryCache) {
+  public void setMemoryCache(TileView.BitmapCache memoryCache) {
     mMemoryCache = memoryCache;
   }
 
-  public void setDiskCache(DiskCache diskCache) {
+  public void setDiskCache(TileView.BitmapCache diskCache) {
     mDiskCache = diskCache;
+  }
+
+  public void setBitmapPool(TileView.BitmapPool bitmapPool) {
+    mBitmapPool = bitmapPool;
   }
 
   public State getState() {
@@ -81,6 +86,18 @@ public class Tile implements Runnable {
 
   public Rect getDrawingRect() {
     return mDestinationRect;
+  }
+
+  public Bitmap getBitmap() {
+    return mBitmap;
+  }
+
+  public BitmapFactory.Options getDrawingOptions() {
+    return mDrawingOptions;
+  }
+
+  public BitmapFactory.Options getMeasureOptions() {
+    return mMeasureOptions;
   }
 
   private void updateDestinationRect() {
@@ -135,7 +152,6 @@ public class Tile implements Runnable {
     String key = getCacheKey();
     Bitmap cached = mMemoryCache.get(key);
     if (cached != null) {
-      Log.d("TV", "cache hit for " + key);
       mMemoryCache.remove(key);
       setDecodedBitmap(cached);
       return;
@@ -158,7 +174,7 @@ public class Tile implements Runnable {
         mMeasureOptions.outHeight = TILE_SIZE;
         // TODO: this is actually emulating sample size 1 - should measureOptions always be sample size 1?
         mMeasureOptions.inSampleSize = 1;
-        mBitmap = mMemoryCache.getBitmapForReuse(mMeasureOptions);
+        mBitmap = mBitmapPool.getBitmapForReuse(this);
         if (mBitmap == null) {
           mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, mDrawingOptions.inPreferredConfig);
         }
@@ -190,7 +206,7 @@ public class Tile implements Runnable {
         // measure it and populate measure options to pass to cache
         BitmapFactory.decodeStream(stream, null, mMeasureOptions);
         // if we made it this far, the exact bitmap wasn't in memory, but let's grab the least recently used bitmap from the cache and draw over it
-        mDrawingOptions.inBitmap = mMemoryCache.getBitmapForReuse(mMeasureOptions);
+        mDrawingOptions.inBitmap = mBitmapPool.getBitmapForReuse(this);
         // the measurement moved the stream's position - it must be reset to use the same stream to draw pixels
         stream.reset();
         Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mDrawingOptions);

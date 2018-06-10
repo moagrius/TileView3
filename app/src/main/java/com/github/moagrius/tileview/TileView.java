@@ -60,8 +60,9 @@ public class TileView extends View implements
   private Handler mRenderThrottleHandler = new Handler(this);
   private boolean mIsDirty;
 
-  private DiskCache mDiskCache;
-  private MemoryCache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
+  private BitmapCache mDiskCache;
+  private BitmapCache mMemoryCache;
+  private BitmapPool mBitmapPool;
 
   private TilePool mTilePool = new TilePool();
 
@@ -77,6 +78,9 @@ public class TileView extends View implements
     super(context, attrs, defStyleAttr);
     try {
       mDiskCache = new DiskCache(context, DISK_CACHE_SIZE);
+      MemoryCache memoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
+      mMemoryCache = memoryCache;
+      mBitmapPool = memoryCache;
     } catch (IOException e) {
       // TODO: allow use without disk cache
       throw new RuntimeException("Unable to initialize disk cache");
@@ -299,6 +303,7 @@ public class TileView extends View implements
         tile.setImageSample(mImageSample);
         tile.setDetail(mLastValidDetail);
         tile.setMemoryCache(mMemoryCache);
+        tile.setBitmapPool(mBitmapPool);
         tile.setDiskCache(mDiskCache);
         tile.setDrawingView(this);
         tile.setListener(this);
@@ -353,9 +358,14 @@ public class TileView extends View implements
     }
   }
 
-  public interface Cache {
+  public interface BitmapCache {
     Bitmap get(String key);
     Bitmap put(String key, Bitmap value);
+    Bitmap remove(String key);
+  }
+
+  public interface BitmapPool {
+    Bitmap getBitmapForReuse(Tile tile);
   }
 
 }

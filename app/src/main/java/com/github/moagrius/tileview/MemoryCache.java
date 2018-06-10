@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * Implementation of LRU cache (String to Bitmap) with a method to grab the oldest Bitmap.
  */
-public class MemoryCache implements TileView.Cache {
+public class MemoryCache implements TileView.BitmapCache, TileView.BitmapPool {
 
   private LinkedHashMap<String, Bitmap> mMap = new LinkedHashMap<>(0, 0.75f, true);
   private int mMaxSize;
@@ -22,10 +22,12 @@ public class MemoryCache implements TileView.Cache {
     mMaxSize = maxSize;
   }
 
+  @Override
   public synchronized Bitmap get(String key) {
     return mMap.get(key);
   }
 
+  @Override
   public synchronized Bitmap put(String key, Bitmap value) {
     if (value == null) {
       return null;
@@ -39,12 +41,15 @@ public class MemoryCache implements TileView.Cache {
     return previous;
   }
 
-  public synchronized void remove(String key) {
+  @Override
+  public synchronized Bitmap remove(String key) {
     if (mMap.containsKey(key)) {
       Bitmap bitmap = mMap.get(key);
       mSize -= sizeOf(bitmap);
       mMap.remove(key);
+      return bitmap;
     }
+    return null;
   }
 
   private void trimToSize(int maxSize) {
@@ -62,10 +67,12 @@ public class MemoryCache implements TileView.Cache {
     return bitmap.getByteCount() / 1024;
   }
 
-  public synchronized Bitmap getBitmapForReuse(BitmapFactory.Options options) {
+  @Override
+  public synchronized Bitmap getBitmapForReuse(Tile tile) {
     if (mMap.isEmpty()) {
       return null;
     }
+    BitmapFactory.Options options = tile.getMeasureOptions();
     Iterator<Bitmap> iterator = mMap.values().iterator();
     while (iterator.hasNext()) {
       Bitmap candidate = iterator.next();

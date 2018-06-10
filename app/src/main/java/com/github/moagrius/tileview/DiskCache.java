@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-public class DiskCache implements TileView.Cache {
+public class DiskCache implements TileView.BitmapCache {
 
   private static final String DIRECTORY_NAME = "tileview-cache";
   private static final int IO_BUFFER_SIZE = 8 * 1024;
@@ -73,6 +73,16 @@ public class DiskCache implements TileView.Cache {
       if (snapshot != null) {
         snapshot.close();
       }
+    }
+    return null;
+  }
+
+  @Override
+  public Bitmap remove(String key) {
+    try {
+      mDiskCache.remove(key);
+    } catch (IOException e) {
+      // no op
     }
     return null;
   }
