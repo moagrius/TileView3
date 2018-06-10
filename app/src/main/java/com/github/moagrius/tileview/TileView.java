@@ -5,19 +5,20 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.Region;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewParent;
 
-import com.github.moagrius.scheduling.Debounce;
 import com.github.moagrius.scheduling.Scheduler;
 import com.github.moagrius.utils.Maths;
-import com.github.moagrius.utils.SimpleObjectPool;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -54,12 +55,13 @@ public class TileView extends View implements
 
   private TileRenderExecutor mExecutor = new TileRenderExecutor();
   private Scheduler mRenderScheduler = new Scheduler(30);
-  private Debounce mInvalidationDebounce = new Debounce(10);
+
+  private boolean mIsDirty;
 
   private DiskCache mDiskCache;
   private MemoryCache mMemoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
 
-  private SimpleObjectPool<Tile> mTilePool = new SimpleObjectPool<>(Tile::new);
+  private TilePool mTilePool = new TilePool();
 
   // this could be a method reference but we're not guaranteed a singleton runnable in that case.  delcare it as a runnable instance for safety
   private Runnable mUpdateAndComputeTilesRunnable = () -> {
@@ -240,24 +242,46 @@ public class TileView extends View implements
   }
 
   @Override
-  protected void onDraw(Canvas canvas) {
-    canvas.scale(mScale, mScale);
-    drawPreviousTiles(canvas);
-    drawCurrentTiles(canvas);
-  }
-
-  private void updateViewportAndComputeTilesThrottled() {
-    mRenderScheduler.attempt(mUpdateAndComputeTilesRunnable);
+  public void setDirty() {
+    if (mIsDirty) {
+      return;
+    }
+    mIsDirty = true;
+    postInvalidate();
   }
 
   @Override
-  public void postInvalidate() {
-    // TODO: this might not be necessary...
-    mInvalidationDebounce.attempt(this::originalInvalidate);
+  protected void onDraw(Canvas canvas) {
+    super.onDraw(canvas);
+    canvas.save();
+    canvas.scale(mScale, mScale);
+    drawPreviousTiles(canvas);
+    drawCurrentTiles(canvas);
+    canvas.restore();
+    mIsDirty = false;
   }
 
-  private void originalInvalidate() {
-    super.postInvalidate();
+  private static class TileRenderThrottleHandler extends Handler {
+    private WeakReference<TileView> mTileViewWeakReference;
+    public TileRenderThrottleHandler(TileView tileView) {
+      mTileViewWeakReference = new WeakReference<>(tileView);
+    }
+    @Override
+    public void handleMessage( Message message ) {
+      TileView tileView = mTileViewWeakReference.get();
+      if (tileView != null) {
+        tileView.updateViewport();
+        tileView.computeTilesInCurrentViewport();
+      }
+    }
+  }
+  private Handler mTileRenderThrottleHandler = new TileRenderThrottleHandler(this);
+
+  private void updateViewportAndComputeTilesThrottled() {
+    //mRenderScheduler.attempt(mUpdateAndComputeTilesRunnable);
+    if (!mTileRenderThrottleHandler.hasMessages(0)) {
+      mTileRenderThrottleHandler.sendEmptyMessageDelayed(0, 15);
+    }
   }
 
   private void updateViewport() {
@@ -309,8 +333,10 @@ public class TileView extends View implements
     // we use add all instead of straight replacement because lets say tile(3:2) was being decoded - when tile(3:2) comes up in
     // mNewlyVisibleTiles, it won't be added to mTilesVisibleInViewport because Tile.equals will return true
     // if we just swapped out the set (mTilesVisibleInViewport = mNewlyVisibleTiles), all those tiles would lose their state
-    mTilesVisibleInViewport.addAll(mNewlyVisibleTiles);
-    mExecutor.queue(mTilesVisibleInViewport);
+    boolean tilesWereAdded = mTilesVisibleInViewport.addAll(mNewlyVisibleTiles);
+    if (tilesWereAdded) {
+      mExecutor.queue(mTilesVisibleInViewport);
+    }
   }
 
   @Override

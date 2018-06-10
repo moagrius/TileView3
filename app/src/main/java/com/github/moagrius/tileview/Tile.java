@@ -126,7 +126,7 @@ public class Tile implements Runnable {
       mMemoryCache.remove(key);
       mBitmap = cached;
       mState = State.DECODED;
-      mDrawingView.postInvalidate();
+      mDrawingView.setDirty();
       return;
     }
     mState = State.DECODING;
@@ -137,7 +137,7 @@ public class Tile implements Runnable {
       if (cached != null) {
         mBitmap = cached;
         mState = State.DECODED;
-        mDrawingView.postInvalidate();
+        mDrawingView.setDirty();
         return;
       }
       // if we're patching, we need a base bitmap to draw on
@@ -172,7 +172,7 @@ public class Tile implements Runnable {
         return;
       }
       mState = State.DECODED;
-      mDrawingView.postInvalidate();
+      mDrawingView.setDirty();
       mDiskCache.put(key, mBitmap);
     } else {  // no subsample means we have an explicit detail level for this scale, just use that
       String file = getFilePath();
@@ -190,11 +190,12 @@ public class Tile implements Runnable {
           return;
         }
         mState = State.DECODED;
-        mDrawingView.postInvalidate();
+        mDrawingView.setDirty();
       }
     }
   }
 
+  // we use this signature to call from the Executor, so it can remove tiles via iterator
   public void destroy(boolean removeFromQueue) {
     if (mState == State.IDLE) {
       return;
@@ -209,7 +210,8 @@ public class Tile implements Runnable {
     if (mState == State.DECODED) {
       mMemoryCache.put(getCacheKey(), mBitmap);
     }
-    mCacheKey = null;  // CRITICAL!  this led to several bugs
+    // since tiles are pooled and reused, make sure to reset the cache key or you'll render the wrong tile from cache
+    mCacheKey = null;
     mBitmap = null;
     mState = State.IDLE;
     mListener.onTileDestroyed(this);
@@ -251,7 +253,7 @@ public class Tile implements Runnable {
   }
 
   public interface DrawingView {
-    void postInvalidate();
+    void setDirty();
     Context getContext();
   }
 

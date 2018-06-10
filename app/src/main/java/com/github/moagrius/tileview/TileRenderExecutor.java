@@ -1,5 +1,7 @@
 package com.github.moagrius.tileview;
 
+import android.os.Process;
+
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -9,7 +11,13 @@ import java.util.concurrent.TimeUnit;
 public class TileRenderExecutor extends ThreadPoolExecutor {
 
   public TileRenderExecutor(int cores) {
-    super(cores, cores, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<>());
+    super(cores, cores, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<>(), task -> {
+      Thread thread = new Thread(task);
+      thread.setPriority(Thread.MIN_PRIORITY);
+      Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+      return thread;
+    });
+    //super(cores, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<>());
   }
 
   public TileRenderExecutor() {
@@ -29,7 +37,9 @@ public class TileRenderExecutor extends ThreadPoolExecutor {
       if (isShutdownOrTerminating()) {
         return;
       }
-      execute(tile);
+      if (tile.getState() == Tile.State.IDLE) {
+        execute(tile);
+      }
     }
   }
 
