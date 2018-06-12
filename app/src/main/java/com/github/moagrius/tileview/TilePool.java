@@ -1,12 +1,12 @@
 package com.github.moagrius.tileview;
 
 import java.lang.ref.SoftReference;
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 import java.util.Queue;
 
 public class TilePool {
 
-  private Queue<SoftReference<Tile>> mQueue = new LinkedList<>();
+  private Queue<SoftReference<Tile>> mQueue = new ArrayDeque<>();
 
   public Tile get() {
     if (mQueue.peek() != null) {
