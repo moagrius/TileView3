@@ -120,13 +120,12 @@ public class TileView extends View implements
     mStreamProvider = streamProvider;
   }
 
-  // TODO: abstract this, allow any data type, consider Providers
-  public void defineZoomLevel(String template) {
-    defineZoomLevel(0, template);
+  public void defineZoomLevel(Object data) {
+    defineZoomLevel(0, data);
   }
 
-  public void defineZoomLevel(int zoom, String template) {
-    mDetailList.set(zoom, new Detail(zoom, template));
+  public void defineZoomLevel(int zoom, Object data) {
+    mDetailList.set(zoom, new Detail(zoom, data));
     determineCurrentDetail();
   }
 

@@ -149,7 +149,7 @@ public class Tile implements Runnable {
     Context context = mDrawingView.getContext();
     // garden path - image sample size is 1, we have a detail level defined for this zoom
     if (mImageSample == 1) {
-      InputStream stream = mStreamProvider.getStream(mColumn, mRow, context, mDetail.getUri());
+      InputStream stream = mStreamProvider.getStream(mColumn, mRow, context, mDetail.getData());
       if (stream != null) {
         // measure it and populate measure options to pass to cache
         BitmapFactory.decodeStream(stream, null, mMeasureOptions);
@@ -184,7 +184,7 @@ public class Tile implements Runnable {
           if (mState != State.DECODING) {
             return;
           }
-          InputStream stream = mStreamProvider.getStream(mColumn + j, mRow + i, context, mDetail.getUri());
+          InputStream stream = mStreamProvider.getStream(mColumn + j, mRow + i, context, mDetail.getData());
           if (stream != null) {
             Bitmap piece = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
             canvas.drawBitmap(piece, j * size, i * size, null);
