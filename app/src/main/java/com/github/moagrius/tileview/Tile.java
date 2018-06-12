@@ -6,10 +6,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.os.Process;
-import android.util.Log;
 
 import java.io.InputStream;
-import java.util.Locale;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Tile implements Runnable {
@@ -20,8 +18,8 @@ public class Tile implements Runnable {
     IDLE, DECODING, DECODED
   }
 
-  private int mStartRow;
-  private int mStartColumn;
+  private int mRow;
+  private int mColumn;
   private volatile State mState = State.IDLE;
   private Bitmap mBitmap;
   private int mImageSample = 1;
@@ -29,7 +27,7 @@ public class Tile implements Runnable {
   private Detail mDetail;
   private DrawingView mDrawingView;
   private Listener mListener;
-  private Thread mThread;
+  private StreamProvider mStreamProvider;
   private Rect mDestinationRect = new Rect();
   private BitmapFactory.Options mDrawingOptions = new TileOptions(false);
   private BitmapFactory.Options mMeasureOptions = new TileOptions(true);
@@ -40,6 +38,10 @@ public class Tile implements Runnable {
 
   public void setListener(Listener listener) {
     mListener = listener;
+  }
+
+  public void setStreamProvider(StreamProvider streamProvider) {
+    mStreamProvider = streamProvider;
   }
 
   public void setThreadPoolExecutor(ThreadPoolExecutor threadPoolExecutor) {
@@ -62,18 +64,17 @@ public class Tile implements Runnable {
     return mState;
   }
 
-  public void setStartRow(int startRow) {
-    mStartRow = startRow;
+  public void setRow(int row) {
+    mRow = row;
   }
 
-  public void setStartColumn(int startColumn) {
-    mStartColumn = startColumn;
+  public void setColumn(int column) {
+    mColumn = column;
   }
 
   public void setImageSample(int imageSample) {
     mImageSample = imageSample;
     mDrawingOptions.inSampleSize = mImageSample;
-    mMeasureOptions.inSampleSize = mImageSample;
   }
 
   public void setDetail(Detail detail) {
@@ -103,40 +104,29 @@ public class Tile implements Runnable {
   private void updateDestinationRect() {
     int cellSize = TILE_SIZE * mDetail.getSample();
     int patchSize = cellSize * mImageSample;
-    mDestinationRect.left = mStartColumn * cellSize;
-    mDestinationRect.top = mStartRow * cellSize;
+    mDestinationRect.left = mColumn * cellSize;
+    mDestinationRect.top = mRow * cellSize;
     mDestinationRect.right = mDestinationRect.left + patchSize;
     mDestinationRect.bottom = mDestinationRect.top + patchSize;
   }
 
-  private String getFilePath() {
-    String template = mDetail.getUri();
-    return String.format(Locale.US, template, mStartColumn, mStartRow);
-  }
-
   private String getCacheKey() {
     if (mCacheKey == null) {
-      String normalized = getFilePath().replace(".", "_").replace("/", "_");
-      mCacheKey = String.format(Locale.US, "%1$s-%2$s", normalized, mImageSample);
+      mCacheKey = String.valueOf(mColumn) + String.valueOf(mRow) + String.valueOf(mDetail.getZoom());
     }
     return mCacheKey;
   }
 
   // if destroyed by the time this is called, make sure bitmap stays null
   // otherwise, update state and notify drawing view
-  private void setDecodedBitmap() {
+  private void setDecodedBitmap(Bitmap bitmap) {
     if (mState != State.DECODING) {
       mBitmap = null;
       return;
     }
-    mState = State.DECODED;
-    mThread = null;
-    mDrawingView.setDirty(this);
-  }
-
-  private void setDecodedBitmap(Bitmap bitmap) {
     mBitmap = bitmap;
-    setDecodedBitmap();
+    mState = State.DECODED;
+    mDrawingView.setDirty();
   }
 
   // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
@@ -144,7 +134,7 @@ public class Tile implements Runnable {
     if (mState != State.IDLE) {
       return;
     }
-    mThread = Thread.currentThread();
+    mState = State.DECODING;
     // this line is critical on some devices - we're doing so much work off thread that anything higher priority causes jank
     Process.setThreadPriority(Process.THREAD_PRIORITY_LOWEST);
     // putting a thread.sleep of even 100ms here shows that maybe we're doing work off screen that we should not be doing
@@ -156,52 +146,10 @@ public class Tile implements Runnable {
       setDecodedBitmap(cached);
       return;
     }
-    mState = State.DECODING;
     Context context = mDrawingView.getContext();
-    // if image sample is greater than 1, we should cache the downsampled versions on disk
-    boolean isSubSampled = mImageSample > 1;
-    if (isSubSampled) {
-      cached = mDiskCache.get(key);
-      if (cached != null) {
-        setDecodedBitmap(cached);
-        return;
-      }
-      // if we're patching, we need a base bitmap to draw on
-      if (mBitmap == null) {
-        // let's try to use one from the cache if we have one
-        // we need to fake the measurements
-        mMeasureOptions.outWidth = TILE_SIZE;
-        mMeasureOptions.outHeight = TILE_SIZE;
-        // TODO: this is actually emulating sample size 1 - should measureOptions always be sample size 1?
-        mMeasureOptions.inSampleSize = 1;
-        mBitmap = mBitmapPool.getBitmapForReuse(this);
-        if (mBitmap == null) {
-          mBitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, mDrawingOptions.inPreferredConfig);
-        }
-        // can we now draw directly onto mBitmap using mDrawingOptions.inBitmap?
-      }
-      Canvas canvas = new Canvas(mBitmap);
-      String template = mDetail.getUri();
-      int size = TILE_SIZE / mImageSample;
-      for (int i = 0; i < mImageSample; i++) {
-        for (int j = 0; j < mImageSample; j++) {
-          // if we got destroyed while decoding, drop out
-          if (mState != State.DECODING) {
-            return;
-          }
-          String file = String.format(Locale.US, template, mStartColumn + j, mStartRow + i);
-          InputStream stream = context.getAssets().open(file);
-          if (stream != null) {
-            Bitmap piece = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
-            canvas.drawBitmap(piece, j * size, i * size, null);
-          }
-        }
-      }
-      setDecodedBitmap();
-      mDiskCache.put(key, mBitmap);
-    } else {  // no subsample means we have an explicit detail level for this scale, just use that
-      String file = getFilePath();
-      InputStream stream = context.getAssets().open(file);
+    // garden path - image sample size is 1, we have a detail level defined for this zoom
+    if (mImageSample == 1) {
+      InputStream stream = mStreamProvider.getStream(mColumn, mRow, context, mDetail.getUri());
       if (stream != null) {
         // measure it and populate measure options to pass to cache
         BitmapFactory.decodeStream(stream, null, mMeasureOptions);
@@ -212,6 +160,39 @@ public class Tile implements Runnable {
         Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
         setDecodedBitmap(bitmap);
       }
+    // we don't have a defined zoom level, so we need to use image sub-sampling and disk cache even if reading files locally
+    } else {
+      cached = mDiskCache.get(key);
+      if (cached != null) {
+        setDecodedBitmap(cached);
+        return;
+      }
+      // if we're patching, we need a base bitmap to draw on
+      // let's try to use one from the cache if we have one
+      // we need to fake the measurements
+      mMeasureOptions.outWidth = TILE_SIZE;
+      mMeasureOptions.outHeight = TILE_SIZE;
+      Bitmap bitmap = mBitmapPool.getBitmapForReuse(this);
+      if (bitmap == null) {
+        bitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, mDrawingOptions.inPreferredConfig);
+      }
+      Canvas canvas = new Canvas(bitmap);
+      int size = TILE_SIZE / mImageSample;
+      for (int i = 0; i < mImageSample; i++) {
+        for (int j = 0; j < mImageSample; j++) {
+          // if we got destroyed while decoding, drop out
+          if (mState != State.DECODING) {
+            return;
+          }
+          InputStream stream = mStreamProvider.getStream(mColumn + j, mRow + i, context, mDetail.getUri());
+          if (stream != null) {
+            Bitmap piece = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
+            canvas.drawBitmap(piece, j * size, i * size, null);
+          }
+        }
+      }
+      setDecodedBitmap(bitmap);
+      mDiskCache.put(key, bitmap);
     }
   }
 
@@ -220,19 +201,16 @@ public class Tile implements Runnable {
     if (mState == State.IDLE) {
       return;
     }
-    if (mThread != null && mThread.isAlive()) {
-      mThread.interrupt();
-    }
-    mDrawingOptions.inBitmap = null;
     if (removeFromQueue) {
       mThreadPoolExecutor.remove(this);
     }
     if (mState == State.DECODED) {
       mMemoryCache.put(getCacheKey(), mBitmap);
     }
+    mBitmap = null;
+    mDrawingOptions.inBitmap = null;
     // since tiles are pooled and reused, make sure to reset the cache key or you'll render the wrong tile from cache
     mCacheKey = null;
-    mBitmap = null;
     mState = State.IDLE;
     mListener.onTileDestroyed(this);
   }
@@ -262,8 +240,8 @@ public class Tile implements Runnable {
     }
     if (obj instanceof Tile) {
       Tile compare = (Tile) obj;
-      return compare.mStartColumn == mStartColumn
-          && compare.mStartRow == mStartRow
+      return compare.mColumn == mColumn
+          && compare.mRow == mRow
           && compare.mDetail.getZoom() == mDetail.getZoom();
     }
     return false;
@@ -272,14 +250,14 @@ public class Tile implements Runnable {
   @Override
   public int hashCode() {
     int hash = 17;
-    hash = hash * 31 + mStartColumn;
-    hash = hash * 31 + mStartRow;
+    hash = hash * 31 + mColumn;
+    hash = hash * 31 + mRow;
     hash = hash * 31 + 1000 * mDetail.getZoom();
     return hash;
   }
 
   public interface DrawingView {
-    void setDirty(Tile tile);
+    void setDirty();
     Context getContext();
   }
 

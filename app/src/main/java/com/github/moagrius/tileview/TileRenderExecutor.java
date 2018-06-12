@@ -47,7 +47,7 @@ public class TileRenderExecutor extends ThreadPoolExecutor {
     getQueue().clear();
   }
 
-  public boolean isShutdownOrTerminating() {
+  private boolean isShutdownOrTerminating() {
     return isShutdown() || isTerminating() || isTerminated();
   }
 

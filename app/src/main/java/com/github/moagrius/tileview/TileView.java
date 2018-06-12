@@ -35,9 +35,12 @@ public class TileView extends View implements
   private static final int RENDER_THROTTLE_INTERVAL = 15;
 
   private float mScale = 1f;
+
   private int mZoom = 0;
   // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
   private int mImageSample = 1;
+
+  private StreamProvider mStreamProvider;
 
   private Grid mGrid = new Grid();
   private DetailList mDetailList = new DetailList();
@@ -53,6 +56,7 @@ public class TileView extends View implements
   private Set<Tile> mPreviouslyDrawnTiles = new HashSet<>();
 
   private Rect mViewport = new Rect();
+  private Rect mScaledViewport = new Rect();  // really just a buffer for unfilled region
   private Region mUnfilledRegion = new Region();
 
   private TileRenderExecutor mExecutor = new TileRenderExecutor();
@@ -105,6 +109,17 @@ public class TileView extends View implements
     updateViewportAndComputeTilesThrottled();
   }
 
+  public StreamProvider getStreamProvider() {
+    if (mStreamProvider == null) {
+      mStreamProvider = new StreamProviderAssets();
+    }
+    return mStreamProvider;
+  }
+
+  public void setStreamProvider(StreamProvider streamProvider) {
+    mStreamProvider = streamProvider;
+  }
+
   // TODO: abstract this, allow any data type, consider Providers
   public void defineZoomLevel(String template) {
     defineZoomLevel(0, template);
@@ -130,7 +145,8 @@ public class TileView extends View implements
     if (mZoom != previousZoom) {
       onZoomChanged(mZoom, previousZoom);
     }
-    invalidate();
+    updateScaledViewport();
+    setDirty();
   }
 
   protected void onZoomChanged(int current, int previous) {
@@ -197,13 +213,7 @@ public class TileView extends View implements
   }
 
   private void establishDirtyRegion() {
-    // set unfilled to entire viewport, virtualized to scale
-    mUnfilledRegion.set(
-        (int) (mViewport.left / mScale),
-        (int) (mViewport.top / mScale),
-        (int) (mViewport.right / mScale),
-        (int) (mViewport.bottom / mScale)
-    );
+    mUnfilledRegion.set(mScaledViewport);
     // then punch holes in it for every decoded current tile
     // when drawing previous tiles, if there's no intersection with an unfilled area, it can be safely discarded
     // otherwise we should draw the previous tile
@@ -242,7 +252,7 @@ public class TileView extends View implements
   }
 
   @Override
-  public void setDirty(Tile tile) {
+  public void setDirty() {
     if (mIsDirty) {
       return;
     }
@@ -265,7 +275,7 @@ public class TileView extends View implements
   @Override
   public boolean handleMessage(Message message) {
     updateViewport();
-    computeTilesInCurrentViewport();
+    computeAndRenderTilesInViewport();
     return true;
   }
 
@@ -280,6 +290,17 @@ public class TileView extends View implements
     mViewport.top = mZoomScrollView.getScrollY();
     mViewport.right = mViewport.left + mZoomScrollView.getMeasuredWidth();
     mViewport.bottom = mViewport.top + mZoomScrollView.getMeasuredHeight();
+    updateScaledViewport();
+  }
+
+  private void updateScaledViewport() {
+    // set unfilled to entire viewport, virtualized to scale
+    mUnfilledRegion.set(
+        (int) (mViewport.left / mScale),
+        (int) (mViewport.top / mScale),
+        (int) (mViewport.right / mScale),
+        (int) (mViewport.bottom / mScale)
+    );
   }
 
   public void populateTileGridFromViewport() {
@@ -290,23 +311,29 @@ public class TileView extends View implements
     mGrid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mImageSample);
   }
 
-  private void computeTilesInCurrentViewport() {
+  private Tile getDecoratedTile() {
+    Tile tile = mTilePool.get();
+    tile.setStreamProvider(getStreamProvider());
+    tile.setThreadPoolExecutor(mExecutor);
+    tile.setImageSample(mImageSample);
+    tile.setDetail(mLastValidDetail);
+    tile.setMemoryCache(mMemoryCache);
+    tile.setBitmapPool(mBitmapPool);
+    tile.setDiskCache(mDiskCache);
+    tile.setDrawingView(this);
+    tile.setListener(this);
+    return tile;
+  }
+
+  private void computeAndRenderTilesInViewport() {
     // determine which tiles should be showing.  use sample size for patching very small tiles together
     mNewlyVisibleTiles.clear();
     populateTileGridFromViewport();
     for (int row = mGrid.rows.start; row < mGrid.rows.end; row += mImageSample) {
       for (int column = mGrid.columns.start; column < mGrid.columns.end; column += mImageSample) {
-        Tile tile = mTilePool.get();
-        tile.setThreadPoolExecutor(mExecutor);
-        tile.setStartColumn(column);
-        tile.setStartRow(row);
-        tile.setImageSample(mImageSample);
-        tile.setDetail(mLastValidDetail);
-        tile.setMemoryCache(mMemoryCache);
-        tile.setBitmapPool(mBitmapPool);
-        tile.setDiskCache(mDiskCache);
-        tile.setDrawingView(this);
-        tile.setListener(this);
+        Tile tile = getDecoratedTile();
+        tile.setColumn(column);
+        tile.setRow(row);
         mNewlyVisibleTiles.add(tile);
       }
     }
