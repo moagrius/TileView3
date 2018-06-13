@@ -7,65 +7,82 @@ import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.os.Process;
 
+import com.github.moagrius.tileview.io.StreamProvider;
+
 import java.io.InputStream;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Tile implements Runnable {
 
-  public static final int TILE_SIZE = 256;
-
   enum State {
     IDLE, DECODING, DECODED
   }
 
+  // variable (settable)
   private int mRow;
   private int mColumn;
+  private int mImageSample = 1;
+  private Detail mDetail;
+
+  // variable (computed)
   private volatile State mState = State.IDLE;
   private Bitmap mBitmap;
-  private int mImageSample = 1;
+
+  // lazy
   private String mCacheKey;
-  private Detail mDetail;
-  private DrawingView mDrawingView;
-  private Listener mListener;
-  private StreamProvider mStreamProvider;
-  private Rect mDestinationRect = new Rect();
-  private BitmapFactory.Options mDrawingOptions = new TileOptions(false);
-  private BitmapFactory.Options mMeasureOptions = new TileOptions(true);
-  private TileView.BitmapCache mMemoryCache;
-  private TileView.BitmapCache mDiskCache;
-  private TileView.BitmapPool mBitmapPool;
-  private ThreadPoolExecutor mThreadPoolExecutor;
-
-  public void setListener(Listener listener) {
+  
+  // final default
+  private final Rect mDestinationRect = new Rect();
+  private final BitmapFactory.Options mDrawingOptions = new TileOptions(false);
+  private final BitmapFactory.Options mMeasureOptions = new TileOptions(true);
+  
+  // final
+  private final int mSize;
+  private final DrawingView mDrawingView;
+  private final Listener mListener;
+  private final StreamProvider mStreamProvider;
+  private final TileView.BitmapCache mMemoryCache;
+  private final TileView.BitmapCache mDiskCache;
+  private final TileView.BitmapPool mBitmapPool;
+  private final TileView.DiskCachePolicy mDiskCachePolicy;
+  private final ThreadPoolExecutor mThreadPoolExecutor;
+  
+  public Tile(
+      int size,
+      DrawingView drawingView,
+      Listener listener,
+      ThreadPoolExecutor threadPoolExecutor,
+      StreamProvider streamProvider,
+      TileView.BitmapCache memoryCache,
+      TileView.BitmapCache diskCache,
+      TileView.BitmapPool bitmapPool,
+      TileView.DiskCachePolicy diskCachePolicy
+  ) {
+    mSize = size;
+    mDrawingView = drawingView;
     mListener = listener;
-  }
-
-  public void setStreamProvider(StreamProvider streamProvider) {
-    mStreamProvider = streamProvider;
-  }
-
-  public void setThreadPoolExecutor(ThreadPoolExecutor threadPoolExecutor) {
     mThreadPoolExecutor = threadPoolExecutor;
-  }
-
-  public void setMemoryCache(TileView.BitmapCache memoryCache) {
+    mStreamProvider = streamProvider;
     mMemoryCache = memoryCache;
-  }
-
-  public void setDiskCache(TileView.BitmapCache diskCache) {
     mDiskCache = diskCache;
-  }
-
-  public void setBitmapPool(TileView.BitmapPool bitmapPool) {
     mBitmapPool = bitmapPool;
+    mDiskCachePolicy = diskCachePolicy;
   }
 
   public State getState() {
     return mState;
   }
 
+  public int getRow() {
+    return mRow;
+  }
+
   public void setRow(int row) {
     mRow = row;
+  }
+
+  public int getColumn() {
+    return mColumn;
   }
 
   public void setColumn(int column) {
@@ -77,12 +94,12 @@ public class Tile implements Runnable {
     mDrawingOptions.inSampleSize = mImageSample;
   }
 
-  public void setDetail(Detail detail) {
-    mDetail = detail;
+  public Detail getDetail() {
+    return mDetail;
   }
 
-  public void setDrawingView(DrawingView drawingView) {
-    mDrawingView = drawingView;
+  public void setDetail(Detail detail) {
+    mDetail = detail;
   }
 
   public Rect getDrawingRect() {
@@ -102,7 +119,7 @@ public class Tile implements Runnable {
   }
 
   private void updateDestinationRect() {
-    int cellSize = TILE_SIZE * mDetail.getSample();
+    int cellSize = mSize * mDetail.getSample();
     int patchSize = cellSize * mImageSample;
     mDestinationRect.left = mColumn * cellSize;
     mDestinationRect.top = mRow * cellSize;
@@ -118,7 +135,7 @@ public class Tile implements Runnable {
   }
 
   // if destroyed by the time this is called, make sure bitmap stays null
-  // otherwise, update state and notify drawing view
+  // otherwise, set bitmap, update state, send to memory cache and notify drawing view
   private void setDecodedBitmap(Bitmap bitmap) {
     if (mState != State.DECODING) {
       mBitmap = null;
@@ -127,9 +144,10 @@ public class Tile implements Runnable {
     mBitmap = bitmap;
     mState = State.DECODED;
     mDrawingView.setDirty();
+    mMemoryCache.put(getCacheKey(), bitmap);
+    // TODO: if we ever allow configurable memory caches or bitmap pools, we'll need to differentiate here somehow.  like if mMemoryCache != mBitmapPool
   }
 
-  // TODO: we're assuming that sample size 1 is already on disk but if we allow BitmapProviders, then we'll need to allow that to not be the case
   protected void decode() throws Exception {
     if (mState != State.IDLE) {
       return;
@@ -149,6 +167,16 @@ public class Tile implements Runnable {
     Context context = mDrawingView.getContext();
     // garden path - image sample size is 1, we have a detail level defined for this zoom
     if (mImageSample == 1) {
+      // if we cache everything to disk (usually because we're fetching from remote sources)
+      // check the disk cache now and return out if we can
+      if (mDiskCachePolicy == TileView.DiskCachePolicy.CACHE_ALL) {
+        cached = mDiskCache.get(key);
+        if (cached != null) {
+          setDecodedBitmap(cached);
+          return;
+        }
+      }
+      // no strong disk cache policy, go ahead and decode
       InputStream stream = mStreamProvider.getStream(mColumn, mRow, context, mDetail.getData());
       if (stream != null) {
         // measure it and populate measure options to pass to cache
@@ -159,6 +187,9 @@ public class Tile implements Runnable {
         stream.reset();
         Bitmap bitmap = BitmapFactory.decodeStream(stream, null, mDrawingOptions);
         setDecodedBitmap(bitmap);
+        if (mDiskCachePolicy == TileView.DiskCachePolicy.CACHE_ALL) {
+          mDiskCache.put(key, bitmap);
+        }
       }
     // we don't have a defined zoom level, so we need to use image sub-sampling and disk cache even if reading files locally
     } else {
@@ -170,14 +201,14 @@ public class Tile implements Runnable {
       // if we're patching, we need a base bitmap to draw on
       // let's try to use one from the cache if we have one
       // we need to fake the measurements
-      mMeasureOptions.outWidth = TILE_SIZE;
-      mMeasureOptions.outHeight = TILE_SIZE;
+      mMeasureOptions.outWidth = mSize;
+      mMeasureOptions.outHeight = mSize;
       Bitmap bitmap = mBitmapPool.getBitmapForReuse(this);
       if (bitmap == null) {
-        bitmap = Bitmap.createBitmap(TILE_SIZE, TILE_SIZE, mDrawingOptions.inPreferredConfig);
+        bitmap = Bitmap.createBitmap(mSize, mSize, mDrawingOptions.inPreferredConfig);
       }
       Canvas canvas = new Canvas(bitmap);
-      int size = TILE_SIZE / mImageSample;
+      int size = mSize / mImageSample;
       for (int i = 0; i < mImageSample; i++) {
         for (int j = 0; j < mImageSample; j++) {
           // if we got destroyed while decoding, drop out
@@ -192,7 +223,10 @@ public class Tile implements Runnable {
         }
       }
       setDecodedBitmap(bitmap);
-      mDiskCache.put(key, bitmap);
+      // we need to cache patches to disk even if local
+      if (mDiskCachePolicy != TileView.DiskCachePolicy.CACHE_NONE) {
+        mDiskCache.put(key, bitmap);
+      }
     }
   }
 
@@ -252,7 +286,7 @@ public class Tile implements Runnable {
     int hash = 17;
     hash = hash * 31 + mColumn;
     hash = hash * 31 + mRow;
-    hash = hash * 31 + 1000 * mDetail.getZoom();
+    hash = hash * 31 + mDetail.getZoom();
     return hash;
   }
 

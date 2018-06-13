@@ -1,12 +1,20 @@
 package com.github.moagrius.tileview;
 
+import com.github.moagrius.tileview.io.StreamProvider;
+
 import java.lang.ref.SoftReference;
 import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class TilePool {
 
-  private Queue<SoftReference<Tile>> mQueue = new ArrayDeque<>();
+  private final Queue<SoftReference<Tile>> mQueue = new ArrayDeque<>();
+  private final Factory mFactory;
+
+  public TilePool(Factory factory) {
+    mFactory = factory;
+  }
 
   public Tile get() {
     if (mQueue.peek() != null) {
@@ -15,7 +23,7 @@ public class TilePool {
         return tile;
       }
     }
-    return new Tile();
+    return mFactory.create();
   }
 
   public void put(Tile tile) {
@@ -26,6 +34,10 @@ public class TilePool {
 
   public void clear() {
     mQueue.clear();
+  }
+
+  public interface Factory {
+    Tile create();
   }
 
 }

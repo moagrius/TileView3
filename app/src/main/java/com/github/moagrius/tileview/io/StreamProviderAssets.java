@@ -1,4 +1,4 @@
-package com.github.moagrius.tileview;
+package com.github.moagrius.tileview.io;
 
 import android.content.Context;
 

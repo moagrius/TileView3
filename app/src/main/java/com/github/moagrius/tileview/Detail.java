@@ -11,46 +11,28 @@ import com.github.moagrius.utils.Maths;
  * 4        6.25%       16
  * 5        3.125%      32
  * ...
+ * handy math:
+ * get percent from zoom: (1 >> zoom) / 1f (number of digits is precision, so (100 >> zoom) / 100f will give .012
+ * get percent from sample: 1 / sample
+ * get sample from zoom: 1 << zoom
+ * get zoom from sample: Maths.log2(sample)
  */
 
 public class Detail {
-
-  // round to 5 digits
-  public static float getPercentFromZoom(int zoom) {
-    return (10000 >> zoom) / 10000f;
-  }
-
-  public static float getPercentFromSample(int sample) {
-    return 1 / (float) sample;
-  }
-
-  public static int getSampleFromZoom(int zoom) {
-    return 1 << zoom;
-  }
-
-  public static int getSampleFromPercent(float percent) {
-    return 1 << (int) Maths.log2((int) (1 / percent));
-  }
-
-  public static int getZoomFromScale(int sample) {
-    return (int) Maths.log2(sample);
-  }
 
   public static int getZoomFromPercent(float percent) {
     return (int) Maths.log2((int) (1 / percent));
   }
 
-  private int mZoom;
   // this sample is the sample size for grid computation, not image sampling
   private int mSample;
-  private float mPercent;
+  private int mZoom;
   private Object mData;
 
   public Detail(int zoom, Object data) {
     mData = data;
     mZoom = zoom;
-    mSample = getSampleFromZoom(zoom);
-    mPercent = getPercentFromZoom(zoom);
+    mSample = 1 << zoom;
   }
 
   public Object getData() {
@@ -63,10 +45,6 @@ public class Detail {
 
   public int getSample() {
     return mSample;
-  }
-
-  public float getPercent() {
-    return mPercent;
   }
 
 }

@@ -12,6 +12,8 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewParent;
 
+import com.github.moagrius.tileview.io.StreamProvider;
+import com.github.moagrius.tileview.io.StreamProviderAssets;
 import com.github.moagrius.utils.Maths;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
@@ -28,47 +30,45 @@ public class TileView extends View implements
     Tile.DrawingView,
     Tile.Listener {
 
-  private static final int MEMORY_CACHE_SIZE = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
-  private static final int DISK_CACHE_SIZE = 1024 * 100;
-
+  // constants
   private static final int RENDER_THROTTLE_ID = 0;
   private static final int RENDER_THROTTLE_INTERVAL = 15;
 
+  // variables (settable)
   private float mScale = 1f;
-
   private int mZoom = 0;
-  // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
-  private int mImageSample = 1;
+  private int mImageSample = 1; // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
+  private int mTileSize;
+  private Detail mCurrentDetail;
+  private boolean mIsDirty;
+  private boolean mIsPrepared;
 
-  private StreamProvider mStreamProvider;
-
-  private Grid mGrid = new Grid();
-  private DetailList mDetailList = new DetailList();
-  private Detail mLastValidDetail;
-
+  // variables (from build or attach)
   private ZoomScrollView mZoomScrollView;
+  private BitmapCache mDiskCache;
+  private BitmapCache mMemoryCache;
+  private BitmapPool mBitmapPool;
+  private StreamProvider mStreamProvider;
+  private DiskCachePolicy mDiskCachePolicy = DiskCachePolicy.CACHE_PATCHES;
+
+  // final
+  private final Grid mGrid = new Grid();
+  private final DetailList mDetailList = new DetailList();
 
   // we keep our tiles in Sets
   // that means we're ensured uniqueness (so we don't have to think about if a tile is already scheduled or not)
   // and O(1) contains, as well as no penalty with foreach loops (excluding the allocation of the iterator)
-  private Set<Tile> mNewlyVisibleTiles = new HashSet<>();
-  private Set<Tile> mTilesVisibleInViewport = new HashSet<>();
-  private Set<Tile> mPreviouslyDrawnTiles = new HashSet<>();
+  private final Set<Tile> mNewlyVisibleTiles = new HashSet<>();
+  private final Set<Tile> mTilesVisibleInViewport = new HashSet<>();
+  private final Set<Tile> mPreviouslyDrawnTiles = new HashSet<>();
 
-  private Rect mViewport = new Rect();
-  private Rect mScaledViewport = new Rect();  // really just a buffer for unfilled region
-  private Region mUnfilledRegion = new Region();
+  private final Rect mViewport = new Rect();
+  private final Rect mScaledViewport = new Rect();  // really just a buffer for unfilled region
+  private final Region mUnfilledRegion = new Region();
 
-  private TileRenderExecutor mExecutor = new TileRenderExecutor();
-
-  private Handler mRenderThrottleHandler = new Handler(this);
-  private boolean mIsDirty;
-
-  private BitmapCache mDiskCache;
-  private BitmapCache mMemoryCache;
-  private BitmapPool mBitmapPool;
-
-  private TilePool mTilePool = new TilePool();
+  private final TilePool mTilePool = new TilePool(this::createTile);
+  private final TileRenderExecutor mExecutor = new TileRenderExecutor();
+  private final Handler mRenderThrottle = new Handler(this);
 
   public TileView(Context context) {
     this(context, null);
@@ -80,18 +80,8 @@ public class TileView extends View implements
 
   public TileView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
-    try {
-      mDiskCache = new DiskCache(context, DISK_CACHE_SIZE);
-      MemoryCache memoryCache = new MemoryCache(MEMORY_CACHE_SIZE);
-      mMemoryCache = memoryCache;
-      mBitmapPool = memoryCache;
-    } catch (IOException e) {
-      // TODO: allow use without disk cache
-      throw new RuntimeException("Unable to initialize disk cache");
-    }
   }
 
-  // TODO: use a prepare method (like MediaPlayer) and a background thread for setup
   @Override
   protected void onAttachedToWindow() {
     super.onAttachedToWindow();
@@ -105,26 +95,9 @@ public class TileView extends View implements
     mZoomScrollView = (ZoomScrollView) getParent();
     mZoomScrollView.setScaleChangedListener(this);
     mZoomScrollView.setScrollChangedListener(this);
-    determineCurrentDetail();
-    updateViewportAndComputeTilesThrottled();
   }
 
-  public StreamProvider getStreamProvider() {
-    if (mStreamProvider == null) {
-      mStreamProvider = new StreamProviderAssets();
-    }
-    return mStreamProvider;
-  }
-
-  public void setStreamProvider(StreamProvider streamProvider) {
-    mStreamProvider = streamProvider;
-  }
-
-  public void defineZoomLevel(Object data) {
-    defineZoomLevel(0, data);
-  }
-
-  public void defineZoomLevel(int zoom, Object data) {
+  private void defineZoomLevel(int zoom, Object data) {
     mDetailList.set(zoom, new Detail(zoom, data));
     determineCurrentDetail();
   }
@@ -182,20 +155,16 @@ public class TileView extends View implements
     // so if we have a detail level defined for zoom level 1 (sample 2) but are on zoom level 2 (sample 4) we want an actual sample of 2
     // similarly if we have definition for sample zoom 1 / sample 2 and are on zoom 3 / sample 8, we want actual sample of 4
     // this is also the case for the third block, below.
-    //
-    // unrelated, any time a detail level changes, we create a new TileOptions object, because we hand these instances off to tiles,
-    // which may get drawn even after zoom level has changed, and changing the inSampleSize of a single shared instance would cause
-    // tiles from previous zoom levels to render improperly
     if (mZoom >= mDetailList.size()) {
-      mLastValidDetail = mDetailList.getHighestDefined();
-      int zoomDelta = mZoom - mLastValidDetail.getZoom();
+      mCurrentDetail = mDetailList.getHighestDefined();
+      int zoomDelta = mZoom - mCurrentDetail.getZoom();
       mImageSample = 1 << zoomDelta;
       return;
     }
     // best case, it's an exact match, use that and set sample to 1
     Detail exactMatch = mDetailList.get(mZoom);
     if (exactMatch != null) {
-      mLastValidDetail = exactMatch;
+      mCurrentDetail = exactMatch;
       return;
     }
     // it's not bigger than what we have defined, but we don't have an exact match, start at the requested zoom and work back
@@ -203,8 +172,8 @@ public class TileView extends View implements
     for (int i = mZoom - 1; i >= 0; i--) {
       Detail current = mDetailList.get(i);
       if (current != null) {  // if it's defined
-        mLastValidDetail = current;
-        int zoomDelta = mZoom - mLastValidDetail.getZoom();
+        mCurrentDetail = current;
+        int zoomDelta = mZoom - mCurrentDetail.getZoom();
         mImageSample = 1 << zoomDelta;
         return;
       }
@@ -273,14 +242,20 @@ public class TileView extends View implements
   // Implementing Handler.Callback handleMessage to react to throttled requests to start a render op
   @Override
   public boolean handleMessage(Message message) {
-    updateViewport();
-    computeAndRenderTilesInViewport();
+    updateViewportAndComputeTiles();
     return true;
   }
 
+  private void updateViewportAndComputeTiles() {
+    if (mIsPrepared) {
+      updateViewport();
+      computeAndRenderTilesInViewport();
+    }
+  }
+
   private void updateViewportAndComputeTilesThrottled() {
-    if (!mRenderThrottleHandler.hasMessages(RENDER_THROTTLE_ID)) {
-      mRenderThrottleHandler.sendEmptyMessageDelayed(RENDER_THROTTLE_ID, RENDER_THROTTLE_INTERVAL);
+    if (!mRenderThrottle.hasMessages(RENDER_THROTTLE_ID)) {
+      mRenderThrottle.sendEmptyMessageDelayed(RENDER_THROTTLE_ID, RENDER_THROTTLE_INTERVAL);
     }
   }
 
@@ -303,25 +278,15 @@ public class TileView extends View implements
   }
 
   public void populateTileGridFromViewport() {
-    float tileSize = Tile.TILE_SIZE * mScale * mLastValidDetail.getSample();
+    float tileSize = mTileSize * mScale * mCurrentDetail.getSample();
     mGrid.rows.start = Maths.roundDownWithStep(mViewport.top / tileSize, mImageSample);
     mGrid.rows.end = Maths.roundUpWithStep(mViewport.bottom / tileSize, mImageSample);
     mGrid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mImageSample);
     mGrid.columns.end = Maths.roundUpWithStep(mViewport.right / tileSize, mImageSample);
   }
 
-  private Tile getDecoratedTile() {
-    Tile tile = mTilePool.get();
-    tile.setStreamProvider(getStreamProvider());
-    tile.setThreadPoolExecutor(mExecutor);
-    tile.setImageSample(mImageSample);
-    tile.setDetail(mLastValidDetail);
-    tile.setMemoryCache(mMemoryCache);
-    tile.setBitmapPool(mBitmapPool);
-    tile.setDiskCache(mDiskCache);
-    tile.setDrawingView(this);
-    tile.setListener(this);
-    return tile;
+  public Tile createTile() {
+    return new Tile(mTileSize, this, this, mExecutor, mStreamProvider, mMemoryCache, mDiskCache, mBitmapPool, mDiskCachePolicy);
   }
 
   private void computeAndRenderTilesInViewport() {
@@ -330,9 +295,11 @@ public class TileView extends View implements
     populateTileGridFromViewport();
     for (int row = mGrid.rows.start; row < mGrid.rows.end; row += mImageSample) {
       for (int column = mGrid.columns.start; column < mGrid.columns.end; column += mImageSample) {
-        Tile tile = getDecoratedTile();
+        Tile tile = mTilePool.get();
         tile.setColumn(column);
         tile.setRow(row);
+        tile.setDetail(mCurrentDetail);
+        tile.setImageSample(mImageSample);
         mNewlyVisibleTiles.add(tile);
       }
     }
@@ -369,10 +336,14 @@ public class TileView extends View implements
 
   public void destroy() {
     mExecutor.shutdownNow();
-    mExecutor = null;
     mTilePool.clear();
-    mTilePool = null;
-    mRenderThrottleHandler = null;
+    mRenderThrottle.removeMessages(RENDER_THROTTLE_ID);
+  }
+
+  private void prepare() {
+    mIsPrepared = true;
+    determineCurrentDetail();
+    updateViewportAndComputeTiles();
   }
 
   private static class Grid {
@@ -392,6 +363,93 @@ public class TileView extends View implements
 
   public interface BitmapPool {
     Bitmap getBitmapForReuse(Tile tile);
+  }
+
+  public static class Builder {
+
+    private TileView mTileView;
+    private StreamProvider mStreamProvider;
+    private TileView.BitmapCache mMemoryCache;
+    private TileView.BitmapCache mDiskCache;
+    private TileView.BitmapPool mBitmapPool;
+
+    private int mTileSize = 256;
+    private int mMemoryCacheSize = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
+    private int mDiskCacheSize = 1024 * 100;
+    private DiskCachePolicy mDiskCachePolicy = DiskCachePolicy.CACHE_PATCHES;
+
+    public Builder(TileView tileView) {
+      mTileView = tileView;
+    }
+
+    public Builder defineZoomLevel(Object data) {
+      return defineZoomLevel(0, data);
+    }
+
+    public Builder defineZoomLevel(int zoom, Object data) {
+      mTileView.defineZoomLevel(zoom, data);
+      return this;
+    }
+
+    public Builder setTileSize(int tileSize) {
+      mTileSize = tileSize;
+      return this;
+    }
+
+    public Builder setDiskCachePolicity(DiskCachePolicy policy) {
+      mDiskCachePolicy = policy;
+      return this;
+    }
+
+    public Builder setMemoryCacheSize(int memoryCacheSize) {
+      mMemoryCacheSize = memoryCacheSize;
+      return this;
+    }
+
+    public Builder setDiskCacheSize(int diskCacheSize) {
+      mDiskCacheSize = diskCacheSize;
+      return this;
+    }
+
+    public Builder setStreamProvider(StreamProvider streamProvider) {
+      mStreamProvider = streamProvider;
+      return this;
+    }
+
+    // getters
+
+    private StreamProvider getStreamProvider() {
+      if (mStreamProvider == null) {
+        mStreamProvider = new StreamProviderAssets();
+      }
+      return mStreamProvider;
+    }
+
+    public void build() {
+      mTileView.mTileSize = mTileSize;
+      // if the user provided a custom provider, use that, otherwise default to assets
+      mTileView.mStreamProvider = getStreamProvider();
+      // use memory cache instance for both memory cache and bitmap pool.  maybe allows these to be set in the future
+      MemoryCache memoryCache = new MemoryCache(mMemoryCacheSize);
+      mTileView.mMemoryCache = memoryCache;
+      mTileView.mBitmapPool = memoryCache;
+      // if the policy is to cache something and the size is not 0, try to create a disk cache
+      // TODO: async?
+      mTileView.mDiskCachePolicy = mDiskCachePolicy;
+      if (mDiskCachePolicy != DiskCachePolicy.CACHE_NONE && mDiskCacheSize > 0) {
+        try {
+          mTileView.mDiskCache = new DiskCache(mTileView.getContext(), mDiskCacheSize);
+        } catch (IOException e) {
+          // no op
+        }
+      }
+      mTileView.prepare();
+    }
+
+  }
+
+  public enum DiskCachePolicy {
+    CACHE_NONE, CACHE_PATCHES, CACHE_ALL
   }
 
 }
