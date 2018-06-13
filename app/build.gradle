@@ -1,22 +1,22 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 27
-    defaultConfig {
-        vectorDrawables.useSupportLibrary = true
-        applicationId "com.github.moagrius.tileview3"
-        minSdkVersion 14
-        targetSdkVersion 27
-        versionCode 30000
-        versionName "3.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+  compileSdkVersion 27
+  defaultConfig {
+    vectorDrawables.useSupportLibrary = true
+    applicationId "com.github.moagrius.tileview3"
+    minSdkVersion 14
+    targetSdkVersion 27
+    versionCode 30000
+    versionName "3.0"
+    testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+  }
+  buildTypes {
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
     }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
+  }
   compileOptions {
     targetCompatibility 1.8
     sourceCompatibility 1.8
@@ -24,13 +24,14 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.jakewharton:disklrucache:2.0.2'
-    androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    })
-    implementation 'com.android.support:appcompat-v7:27.0.0'
-    testImplementation 'junit:junit:4.12'
+  implementation fileTree(dir: 'libs', include: ['*.jar'])
+  implementation 'com.jakewharton:disklrucache:2.0.2'
+  implementation 'com.facebook.stetho:stetho:1.5.0'
+  androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
+    exclude group: 'com.android.support', module: 'support-annotations'
+  })
+  implementation 'com.android.support:appcompat-v7:27.0.0'
+  testImplementation 'junit:junit:4.12'
 }
 repositories {
   mavenCentral()

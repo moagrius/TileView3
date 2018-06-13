@@ -11,17 +11,21 @@ import android.support.annotation.Nullable;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewParent;
 
 import com.github.moagrius.tileview.io.StreamProvider;
 import com.github.moagrius.tileview.io.StreamProviderAssets;
+import com.github.moagrius.tileview.plugins.Plugin;
 import com.github.moagrius.utils.Maths;
 import com.github.moagrius.widget.ScrollView;
 import com.github.moagrius.widget.ZoomScrollView;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 public class TileView extends View implements
@@ -40,9 +44,10 @@ public class TileView extends View implements
   private int mZoom = 0;
   private int mImageSample = 1; // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
   private int mTileSize;
-  private Detail mCurrentDetail;
   private boolean mIsDirty;
   private boolean mIsPrepared;
+  private Detail mCurrentDetail;
+  private Listener mListener;
 
   // variables (from build or attach)
   private ZoomScrollView mZoomScrollView;
@@ -56,6 +61,7 @@ public class TileView extends View implements
   // final
   private final Grid mGrid = new Grid();
   private final DetailList mDetailList = new DetailList();
+  private final Map<Class<? extends Plugin>, Plugin> mPlugins = new HashMap<>();
 
   // we keep our tiles in Sets
   // that means we're ensured uniqueness (so we don't have to think about if a tile is already scheduled or not)
@@ -86,7 +92,6 @@ public class TileView extends View implements
 
   // public
 
-
   public int getZoom() {
     return mZoom;
   }
@@ -106,11 +111,27 @@ public class TileView extends View implements
     setDirty();
   }
 
+  public Listener getListener() {
+    return mListener;
+  }
+
+  public void setListener(Listener listener) {
+    mListener = listener;
+  }
+
+  @SuppressWarnings("unchecked")
+  public <T extends Plugin> T getPlugin(Class<T> clazz) {
+    return (T) mPlugins.get(clazz);
+  }
+
   // not
 
   @Override
   protected void onAttachedToWindow() {
     super.onAttachedToWindow();
+    if (mZoomScrollView != null) {
+      return;
+    }
     ViewParent parent = getParent();
     while (!(parent instanceof ZoomScrollView)) {
       if (parent == null) {
@@ -118,7 +139,7 @@ public class TileView extends View implements
       }
       parent = getParent();
     }
-    mZoomScrollView = (ZoomScrollView) getParent();
+    mZoomScrollView = (ZoomScrollView) parent;
     mZoomScrollView.setScaleChangedListener(this);
     mZoomScrollView.setScrollChangedListener(this);
   }
@@ -151,12 +172,18 @@ public class TileView extends View implements
 
   @Override
   public void onScrollChanged(ScrollView scrollView, int x, int y) {
+    if (mListener != null) {
+      mListener.onScrollChanged(x, y);
+    }
     updateViewportAndComputeTilesThrottled();
   }
 
   @Override
   public void onScaleChanged(ZoomScrollView zoomScrollView, float currentScale, float previousScale) {
     setScale(currentScale);
+    if (mListener != null) {
+      mListener.onScaleChanged(currentScale, previousScale);
+    }
     updateViewportAndComputeTilesThrottled();
   }
 
@@ -352,6 +379,9 @@ public class TileView extends View implements
   }
 
   private void prepare() {
+    if (mDetailList.isEmpty()) {
+      throw new IllegalStateException("TileView requires at least one defined detail level");
+    }
     mIsPrepared = true;
     determineCurrentDetail();
     updateViewportAndComputeTiles();
@@ -376,6 +406,12 @@ public class TileView extends View implements
     Bitmap getBitmapForReuse(Tile tile);
   }
 
+  public interface Listener {
+    void onScaleChanged(float scale, float previous);
+    void onScrollChanged(int x, int y);
+    void onReady(TileView tileView);
+  }
+
   public static class Builder {
 
     private TileView mTileView;
@@ -391,12 +427,28 @@ public class TileView extends View implements
       mTileView = tileView;
     }
 
+    public Builder(Context context) {
+      mTileView = new TileView(context);
+    }
+
+    public Builder setSize(int width, int height) {
+      ViewGroup.LayoutParams layoutParams = mTileView.getLayoutParams();
+      layoutParams.width = width;
+      layoutParams.height = height;
+      return this;
+    }
+
     public Builder defineZoomLevel(Object data) {
       return defineZoomLevel(0, data);
     }
 
     public Builder defineZoomLevel(int zoom, Object data) {
       mTileView.defineZoomLevel(zoom, data);
+      return this;
+    }
+
+    public Builder setListener(TileView.Listener listener) {
+      mTileView.setListener(listener);
       return this;
     }
 
@@ -430,6 +482,12 @@ public class TileView extends View implements
       return this;
     }
 
+    public Builder installPlugin(Plugin plugin) {
+      mTileView.mPlugins.put(plugin.getClass(), plugin);
+      plugin.install(mTileView);
+      return this;
+    }
+
     // getters
 
     private StreamProvider getStreamProvider() {
@@ -439,7 +497,7 @@ public class TileView extends View implements
       return mStreamProvider;
     }
 
-    public void build() {
+    public TileView build() {
       mTileView.mTileSize = mTileSize;
       mTileView.mBitmapConfig = mConfig;
       // if the user provided a custom provider, use that, otherwise default to assets
@@ -459,6 +517,7 @@ public class TileView extends View implements
         }
       }
       mTileView.prepare();
+      return mTileView;
     }
 
   }
