@@ -8,6 +8,7 @@ import android.graphics.Region;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.Nullable;
+import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewParent;
@@ -49,6 +50,7 @@ public class TileView extends View implements
   private BitmapCache mMemoryCache;
   private BitmapPool mBitmapPool;
   private StreamProvider mStreamProvider;
+  private Bitmap.Config mBitmapConfig = Bitmap.Config.RGB_565;
   private DiskCachePolicy mDiskCachePolicy = DiskCachePolicy.CACHE_PATCHES;
 
   // final
@@ -82,25 +84,8 @@ public class TileView extends View implements
     super(context, attrs, defStyleAttr);
   }
 
-  @Override
-  protected void onAttachedToWindow() {
-    super.onAttachedToWindow();
-    ViewParent parent = getParent();
-    while (!(parent instanceof ZoomScrollView)) {
-      if (parent == null) {
-        throw new IllegalStateException("TileView must be a descendant of a ZoomScrollView");
-      }
-      parent = getParent();
-    }
-    mZoomScrollView = (ZoomScrollView) getParent();
-    mZoomScrollView.setScaleChangedListener(this);
-    mZoomScrollView.setScrollChangedListener(this);
-  }
+  // public
 
-  private void defineZoomLevel(int zoom, Object data) {
-    mDetailList.set(zoom, new Detail(zoom, data));
-    determineCurrentDetail();
-  }
 
   public int getZoom() {
     return mZoom;
@@ -119,6 +104,32 @@ public class TileView extends View implements
     }
     updateScaledViewport();
     setDirty();
+  }
+
+  // not
+
+  @Override
+  protected void onAttachedToWindow() {
+    super.onAttachedToWindow();
+    ViewParent parent = getParent();
+    while (!(parent instanceof ZoomScrollView)) {
+      if (parent == null) {
+        throw new IllegalStateException("TileView must be a descendant of a ZoomScrollView");
+      }
+      parent = getParent();
+    }
+    mZoomScrollView = (ZoomScrollView) getParent();
+    mZoomScrollView.setScaleChangedListener(this);
+    mZoomScrollView.setScrollChangedListener(this);
+  }
+
+  private boolean isReady() {
+    return mIsPrepared && ViewCompat.isAttachedToWindow(this);
+  }
+
+  private void defineZoomLevel(int zoom, Object data) {
+    mDetailList.set(zoom, new Detail(zoom, data));
+    determineCurrentDetail();
   }
 
   protected void onZoomChanged(int current, int previous) {
@@ -247,7 +258,7 @@ public class TileView extends View implements
   }
 
   private void updateViewportAndComputeTiles() {
-    if (mIsPrepared) {
+    if (isReady()) {
       updateViewport();
       computeAndRenderTilesInViewport();
     }
@@ -286,7 +297,7 @@ public class TileView extends View implements
   }
 
   public Tile createTile() {
-    return new Tile(mTileSize, this, this, mExecutor, mStreamProvider, mMemoryCache, mDiskCache, mBitmapPool, mDiskCachePolicy);
+    return new Tile(mTileSize, mBitmapConfig, this, this, mExecutor, mStreamProvider, mMemoryCache, mDiskCache, mBitmapPool, mDiskCachePolicy);
   }
 
   private void computeAndRenderTilesInViewport() {
@@ -369,10 +380,8 @@ public class TileView extends View implements
 
     private TileView mTileView;
     private StreamProvider mStreamProvider;
-    private TileView.BitmapCache mMemoryCache;
-    private TileView.BitmapCache mDiskCache;
-    private TileView.BitmapPool mBitmapPool;
 
+    private Bitmap.Config mConfig = Bitmap.Config.RGB_565;
     private int mTileSize = 256;
     private int mMemoryCacheSize = (int) ((Runtime.getRuntime().maxMemory() / 1024) / 4);
     private int mDiskCacheSize = 1024 * 100;
@@ -388,6 +397,11 @@ public class TileView extends View implements
 
     public Builder defineZoomLevel(int zoom, Object data) {
       mTileView.defineZoomLevel(zoom, data);
+      return this;
+    }
+
+    public Builder setBitmapConfig(Bitmap.Config config) {
+      mConfig = config;
       return this;
     }
 
@@ -427,6 +441,7 @@ public class TileView extends View implements
 
     public void build() {
       mTileView.mTileSize = mTileSize;
+      mTileView.mBitmapConfig = mConfig;
       // if the user provided a custom provider, use that, otherwise default to assets
       mTileView.mStreamProvider = getStreamProvider();
       // use memory cache instance for both memory cache and bitmap pool.  maybe allows these to be set in the future

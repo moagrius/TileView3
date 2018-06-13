@@ -49,6 +49,7 @@ public class Tile implements Runnable {
   
   public Tile(
       int size,
+      Bitmap.Config bitmapConfig,
       DrawingView drawingView,
       Listener listener,
       ThreadPoolExecutor threadPoolExecutor,
@@ -59,6 +60,7 @@ public class Tile implements Runnable {
       TileView.DiskCachePolicy diskCachePolicy
   ) {
     mSize = size;
+    mDrawingOptions.inPreferredConfig = bitmapConfig;
     mDrawingView = drawingView;
     mListener = listener;
     mThreadPoolExecutor = threadPoolExecutor;
@@ -144,8 +146,6 @@ public class Tile implements Runnable {
     mBitmap = bitmap;
     mState = State.DECODED;
     mDrawingView.setDirty();
-    mMemoryCache.put(getCacheKey(), bitmap);
-    // TODO: if we ever allow configurable memory caches or bitmap pools, we'll need to differentiate here somehow.  like if mMemoryCache != mBitmapPool
   }
 
   protected void decode() throws Exception {
