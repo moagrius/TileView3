@@ -18,6 +18,10 @@ import com.github.moagrius.view.TouchUpGestureDetector;
 
 /**
  * @author Mike Dunn, 6/11/17.
+ *
+ * Combination of original work and AOSP ScrollView and HorizontalScrollView
+ * https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/widget/ScrollView.java
+ * https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/widget/HorizontalScrollView.java
  */
 
 public class ScrollView extends FrameLayout implements
@@ -330,6 +334,50 @@ public class ScrollView extends FrameLayout implements
     } else {
       scrollBy(x, y);
     }
+  }
+
+  private boolean inChild(int x, int y) {
+    if (getChildCount() > 0) {
+      final int scrollY = getScrollY();
+      final int scrollX = getScrollX();
+      final View child = getChildAt(0);
+      return !(y < child.getTop() - scrollY
+          || y >= child.getBottom() - scrollY
+          || x < child.getLeft() - scrollX
+          || x >= child.getRight() - scrollX);
+    }
+    return false;
+  }
+
+  @Override
+  public boolean onInterceptTouchEvent(MotionEvent event) {
+    final int action = event.getAction();
+    if ((action == MotionEvent.ACTION_MOVE) && (mIsDragging)) {
+      return true;
+    }
+    if (super.onInterceptTouchEvent(event)) {
+      return true;
+    }
+    if (!canScroll()) {
+      return false;
+    }
+    switch (action & MotionEvent.ACTION_MASK) {
+      case MotionEvent.ACTION_DOWN: {
+        final int y = (int) event.getY();
+        final int x = (int) event.getX();
+        if (!inChild(x, y)) {
+          mIsDragging = false;
+          break;
+        }
+        break;
+      }
+      case MotionEvent.ACTION_CANCEL:
+      case MotionEvent.ACTION_UP:
+        mIsDragging = false;
+      case MotionEvent.ACTION_POINTER_UP:
+        break;
+    }
+    return mIsDragging;
   }
 
   @Override
