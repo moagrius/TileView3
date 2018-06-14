@@ -307,7 +307,7 @@ public class TileView extends View implements
 
   private void updateScaledViewport() {
     // set unfilled to entire viewport, virtualized to scale
-    mUnfilledRegion.set(
+    mScaledViewport.set(
         (int) (mViewport.left / mScale),
         (int) (mViewport.top / mScale),
         (int) (mViewport.right / mScale),
