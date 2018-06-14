@@ -276,6 +276,7 @@ public class Tile implements Runnable {
       Tile compare = (Tile) obj;
       return compare.mColumn == mColumn
           && compare.mRow == mRow
+          && compare.mImageSample == mImageSample
           && compare.mDetail.getZoom() == mDetail.getZoom();
     }
     return false;
@@ -286,6 +287,7 @@ public class Tile implements Runnable {
     int hash = 17;
     hash = hash * 31 + mColumn;
     hash = hash * 31 + mRow;
+    hash = hash * 31 + mImageSample;
     hash = hash * 31 + mDetail.getZoom();
     return hash;
   }
