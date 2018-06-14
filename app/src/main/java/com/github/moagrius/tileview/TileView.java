@@ -172,19 +172,19 @@ public class TileView extends View implements
 
   @Override
   public void onScrollChanged(ScrollView scrollView, int x, int y) {
+    updateViewportAndComputeTilesThrottled();
     if (mListener != null) {
       mListener.onScrollChanged(x, y);
     }
-    updateViewportAndComputeTilesThrottled();
   }
 
   @Override
   public void onScaleChanged(ZoomScrollView zoomScrollView, float currentScale, float previousScale) {
     setScale(currentScale);
+    updateViewportAndComputeTilesThrottled();
     if (mListener != null) {
       mListener.onScaleChanged(currentScale, previousScale);
     }
-    updateViewportAndComputeTilesThrottled();
   }
 
   private void determineCurrentDetail() {

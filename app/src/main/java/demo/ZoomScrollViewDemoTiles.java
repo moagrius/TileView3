@@ -3,10 +3,8 @@ package demo;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-import android.widget.ImageView;
 
 import com.github.moagrius.tileview.TileView;
-import com.github.moagrius.tileview.plugins.MarkerPlugin;
 import com.github.moagrius.tileview3.R;
 
 /**
@@ -22,17 +20,17 @@ public class ZoomScrollViewDemoTiles extends AppCompatActivity {
 
     TileView tileView = findViewById(R.id.tileview);
     new TileView.Builder(tileView)
-        .installPlugin(new MarkerPlugin(this))
+        //.installPlugin(new MarkerPlugin(this))
         .defineZoomLevel("tiles/phi-1000000-%1$d_%2$d.jpg")
         .build();
     //tileView.defineZoomLevel("tiles/phi-500000-%1$d_%2$d.jpg");
     //tileView.defineZoomLevel(1, "tiles/phi-500000-%1$d_%2$d.jpg");
     //tileView.defineZoomLevel(2, "tiles/phi-250000-%1$d_%2$d.jpg");
 
-    MarkerPlugin markerPlugin = tileView.getPlugin(MarkerPlugin.class);
-    ImageView marker = new ImageView(this);
-    marker.setImageResource(R.mipmap.ic_launcher);
-    markerPlugin.addMarker(marker, 2000, 100, 0, 0, 0, 0);
+//    MarkerPlugin markerPlugin = tileView.getPlugin(MarkerPlugin.class);
+//    ImageView marker = new ImageView(this);
+//    marker.setImageResource(R.mipmap.ic_launcher);
+//    markerPlugin.addMarker(marker, 2000, 100, 0, 0, 0, 0);
 
   }
 

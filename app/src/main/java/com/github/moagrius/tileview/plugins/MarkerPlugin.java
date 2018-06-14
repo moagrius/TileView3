@@ -101,7 +101,7 @@ public class MarkerPlugin extends ViewGroup implements Plugin, TileView.Listener
     public void onViewAttachedToWindow(View v) {
       mTileView.removeOnAttachStateChangeListener(this);
       // if the TileView is an immediate child of a ZoomScrollView, we need to substitute a FrameLayout
-      Plugins.wedge(mTileView, MarkerPlugin.this);
+      Plugins.wrap(mTileView, MarkerPlugin.this);
     }
 
     @Override
