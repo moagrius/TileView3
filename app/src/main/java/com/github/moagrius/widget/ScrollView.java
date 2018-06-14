@@ -3,7 +3,6 @@ package com.github.moagrius.widget;
 import android.content.Context;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.FocusFinder;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
@@ -123,119 +122,27 @@ public class ScrollView extends FrameLayout implements
     mSmoothScrollingEnabled = smoothScrollingEnabled;
   }
 
-  /**
-   * Ask one of the children of this view to measure itself, taking into
-   * account both the MeasureSpec requirements for this view and its padding.
-   * The heavy lifting is done in getChildMeasureSpec.
-   *
-   * @param child                   The child to measure
-   * @param parentWidthMeasureSpec  The width requirements for this view
-   * @param parentHeightMeasureSpec The height requirements for this view
-   */
+  @Override
   protected void measureChild(View child, int parentWidthMeasureSpec, int parentHeightMeasureSpec) {
-    LayoutParams lp = (LayoutParams) child.getLayoutParams();
-    int childWidthMeasureSpec = getScrollViewChildMeasureSpec(parentWidthMeasureSpec, getPaddingLeft() + getPaddingRight(), lp.width);
-    int childHeightMeasureSpec = getScrollViewChildMeasureSpec(parentHeightMeasureSpec, getPaddingTop() + getPaddingBottom(), lp.height);
+    final int horizontalPadding = getPaddingLeft() + getPaddingRight();
+    final int verticalPadding = getPaddingTop() + getPaddingBottom();
+    final int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentWidthMeasureSpec) - horizontalPadding), MeasureSpec.UNSPECIFIED);
+    final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentHeightMeasureSpec) - verticalPadding), MeasureSpec.UNSPECIFIED);
     child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
   }
 
-  /**
-   * Ask one of the children of this view to measure itself, taking into
-   * account both the MeasureSpec requirements for this view and its padding
-   * and margins. The child must have MarginLayoutParams The heavy lifting is
-   * done in getChildMeasureSpec.
-   *
-   * @param child                   The child to measure
-   * @param parentWidthMeasureSpec  The width requirements for this view
-   * @param widthUsed               Extra space that has been used up by the parent
-   *                                horizontally (possibly by other children of the parent)
-   * @param parentHeightMeasureSpec The height requirements for this view
-   * @param heightUsed              Extra space that has been used up by the parent
-   *                                vertically (possibly by other children of the parent)
-   */
   protected void measureChildWithMargins(View child, int parentWidthMeasureSpec, int widthUsed, int parentHeightMeasureSpec, int heightUsed) {
     MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
-    int childWidthMeasureSpec = getScrollViewChildMeasureSpec(parentWidthMeasureSpec, getPaddingLeft() + getPaddingRight() + lp.leftMargin + lp.rightMargin + widthUsed, lp.width);
-    int childHeightMeasureSpec = getScrollViewChildMeasureSpec(parentHeightMeasureSpec, getPaddingTop() + getPaddingBottom() + lp.topMargin + lp.bottomMargin + heightUsed, lp.height);
+    final int horizontalUsedTotal = getPaddingLeft() + getPaddingRight() + lp.leftMargin + lp.rightMargin + widthUsed;
+    final int verticalUsedTotal = getPaddingTop() + getPaddingBottom() + lp.topMargin + lp.bottomMargin + heightUsed;
+    final int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentWidthMeasureSpec) - horizontalUsedTotal), MeasureSpec.UNSPECIFIED);
+    final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentHeightMeasureSpec) - verticalUsedTotal), MeasureSpec.UNSPECIFIED);
     child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
-  }
-
-  /**
-   * Does the hard part of measureChildren: figuring out the MeasureSpec to
-   * pass to a particular child. This method figures out the right MeasureSpec
-   * for one dimension (height or width) of one child view.
-   *
-   * The goal is to combine information from our MeasureSpec with the
-   * LayoutParams of the child to get the best possible results. For example,
-   * if the this view knows its size (because its MeasureSpec has a mode of
-   * EXACTLY), and the child has indicated in its LayoutParams that it wants
-   * to be the same size as the parent, the parent should ask the child to
-   * layout given an exact size.
-   *
-   * @param spec           The requirements for this view
-   * @param padding        The padding of this view for the current dimension and
-   *                       margins, if applicable
-   * @param childDimension How big the child wants to be in the current
-   *                       dimension
-   * @return a MeasureSpec integer for the child
-   */
-  public static int getScrollViewChildMeasureSpec(int spec, int padding, int childDimension) {
-    int specMode = MeasureSpec.getMode(spec);
-    int specSize = MeasureSpec.getSize(spec);
-
-    int size = Math.max(0, specSize - padding);
-
-    int resultSize = 0;
-    int resultMode = 0;
-
-    switch (specMode) {
-      case MeasureSpec.EXACTLY:
-        if (childDimension >= 0) {
-          resultSize = childDimension;
-          resultMode = MeasureSpec.EXACTLY;
-        } else if (childDimension == LayoutParams.MATCH_PARENT) {
-          resultSize = size;
-          resultMode = MeasureSpec.EXACTLY;
-        } else if (childDimension == LayoutParams.WRAP_CONTENT) {
-          resultSize = size;
-          resultMode = MeasureSpec.UNSPECIFIED;
-        }
-        break;
-
-      case MeasureSpec.AT_MOST:
-        if (childDimension >= 0) {
-          resultSize = childDimension;
-          resultMode = MeasureSpec.EXACTLY;
-        } else if (childDimension == LayoutParams.MATCH_PARENT) {
-          resultSize = size;
-          resultMode = MeasureSpec.AT_MOST;
-        } else if (childDimension == LayoutParams.WRAP_CONTENT) {
-          resultSize = size;
-          resultMode = MeasureSpec.UNSPECIFIED;
-        }
-        break;
-
-      case MeasureSpec.UNSPECIFIED:
-        if (childDimension >= 0) {
-          resultSize = childDimension;
-          resultMode = MeasureSpec.EXACTLY;
-        } else if (childDimension == LayoutParams.MATCH_PARENT) {
-          resultSize = size;
-          resultMode = MeasureSpec.UNSPECIFIED;
-        } else if (childDimension == LayoutParams.WRAP_CONTENT) {
-          resultSize = size;
-          resultMode = MeasureSpec.UNSPECIFIED;
-        }
-        break;
-    }
-    //noinspection ResourceType
-    return MeasureSpec.makeMeasureSpec(resultSize, resultMode);
   }
 
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
     super.onLayout(changed, l, t, r, b);
-    Log.d("ScrollView", "layout height=" + (b - t) + ", " + getChild().getMeasuredHeight());
     scrollTo(getScrollX(), getScrollY());
   }
 
