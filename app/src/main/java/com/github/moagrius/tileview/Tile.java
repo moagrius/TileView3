@@ -131,7 +131,7 @@ public class Tile implements Runnable {
 
   private String getCacheKey() {
     if (mCacheKey == null) {
-      mCacheKey = String.valueOf(mColumn) + String.valueOf(mRow) + String.valueOf(mDetail.getZoom());
+      mCacheKey = String.valueOf(mColumn) + String.valueOf(mRow) + String.valueOf(mImageSample) + String.valueOf(mDetail.getZoom());
     }
     return mCacheKey;
   }

@@ -21,7 +21,7 @@ public class MarkerPlugin extends ViewGroup implements Plugin, TileView.Listener
   public void install(TileView tileView) {
     mTileView = tileView;
     mTileView.setListener(this);
-    mTileView.addOnAttachStateChangeListener(mOnAttachStateChangeListener);
+    mTileView.getContainer().addView(this);
   }
 
   @Override
@@ -29,23 +29,7 @@ public class MarkerPlugin extends ViewGroup implements Plugin, TileView.Listener
     measureChildren(widthMeasureSpec, heightMeasureSpec);
     for (int i = 0; i < getChildCount(); i++) {
       View child = getChildAt(i);
-      if (child.getVisibility() != GONE) {
-        MarkerPlugin.LayoutParams layoutParams = (MarkerPlugin.LayoutParams) child.getLayoutParams();
-        // actual sizes of children
-        int actualWidth = child.getMeasuredWidth();
-        int actualHeight = child.getMeasuredHeight();
-        // calculate combined anchor offsets
-        float widthOffset = actualWidth * layoutParams.relativeAnchorX + layoutParams.absoluteAnchorX;
-        float heightOffset = actualHeight * layoutParams.relativeAnchorY + layoutParams.absoluteAnchorY;
-        // get offset position
-        int scaledX = (int) (layoutParams.x * mScale);
-        int scaledY = (int) (layoutParams.y * mScale);
-        // save computed values
-        layoutParams.mLeft = (int) (scaledX + widthOffset);
-        layoutParams.mTop = (int) (scaledY + heightOffset);
-        layoutParams.mRight = layoutParams.mLeft + actualWidth;
-        layoutParams.mBottom = layoutParams.mTop + actualHeight;
-      }
+      populateLayoutParams(child);
     }
     Log.d("TV", "mode = " + MeasureSpec.getMode(widthMeasureSpec));
     int availableWidth = MeasureSpec.getSize(widthMeasureSpec);
@@ -69,46 +53,37 @@ public class MarkerPlugin extends ViewGroup implements Plugin, TileView.Listener
     }
   }
 
+  private LayoutParams populateLayoutParams(View child) {
+    MarkerPlugin.LayoutParams layoutParams = (MarkerPlugin.LayoutParams) child.getLayoutParams();
+    if (child.getVisibility() != View.GONE) {
+      // actual sizes of children
+      int actualWidth = child.getMeasuredWidth();
+      int actualHeight = child.getMeasuredHeight();
+      // calculate combined anchor offsets
+      float widthOffset = actualWidth * layoutParams.relativeAnchorX + layoutParams.absoluteAnchorX;
+      float heightOffset = actualHeight * layoutParams.relativeAnchorY + layoutParams.absoluteAnchorY;
+      // get offset position
+      int scaledX = (int) (layoutParams.x * mScale);
+      int scaledY = (int) (layoutParams.y * mScale);
+      // save computed values
+      layoutParams.mLeft = (int) (scaledX + widthOffset);
+      layoutParams.mTop = (int) (scaledY + heightOffset);
+      layoutParams.mRight = layoutParams.mLeft + actualWidth;
+      layoutParams.mBottom = layoutParams.mTop + actualHeight;
+    }
+    return layoutParams;
+  }
+
   private void reposition() {
     for (int i = 0; i < getChildCount(); i++) {
       View child = getChildAt(i);
       if (child.getVisibility() != GONE) {
-        MarkerPlugin.LayoutParams layoutParams = (MarkerPlugin.LayoutParams) child.getLayoutParams();
-        // actual sizes of children
-        int actualWidth = child.getMeasuredWidth();
-        int actualHeight = child.getMeasuredHeight();
-        // calculate combined anchor offsets
-        float widthOffset = actualWidth * layoutParams.relativeAnchorX + layoutParams.absoluteAnchorX;
-        float heightOffset = actualHeight * layoutParams.relativeAnchorY + layoutParams.absoluteAnchorY;
-        // get offset position
-        int scaledX = (int) (layoutParams.x * mScale);
-        int scaledY = (int) (layoutParams.y * mScale);
-        // save computed values
-        layoutParams.mLeft = (int) (scaledX + widthOffset);
-        layoutParams.mTop = (int) (scaledY + heightOffset);
-        layoutParams.mRight = layoutParams.mLeft + actualWidth;
-        layoutParams.mBottom = layoutParams.mTop + actualHeight;
-        // update
+        LayoutParams layoutParams = populateLayoutParams(child);
         child.setLeft(layoutParams.mLeft);
         child.setTop(layoutParams.mTop);
       }
     }
   }
-
-  private OnAttachStateChangeListener mOnAttachStateChangeListener = new OnAttachStateChangeListener() {
-
-    @Override
-    public void onViewAttachedToWindow(View v) {
-      mTileView.removeOnAttachStateChangeListener(this);
-      // if the TileView is an immediate child of a ZoomScrollView, we need to substitute a FrameLayout
-      Plugins.wrap(mTileView, MarkerPlugin.this);
-    }
-
-    @Override
-    public void onViewDetachedFromWindow(View v) {
-
-    }
-  };
 
   @Override
   public void onZoomChanged(int zoom, int previous) {

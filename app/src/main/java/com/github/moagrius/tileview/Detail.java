@@ -47,4 +47,11 @@ public class Detail {
     return mSample;
   }
 
+  @Override
+  public int hashCode() {
+    int hash = 17;
+    hash = hash * 31 + mZoom;
+    hash = hash * 31 + mData.hashCode();
+    return hash;
+  }
 }

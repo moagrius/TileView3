@@ -12,7 +12,6 @@ import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 
 import com.github.moagrius.tileview.io.StreamProvider;
 import com.github.moagrius.tileview.io.StreamProviderAssets;
@@ -28,12 +27,13 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-public class TileView extends View implements
+public class TileView extends ZoomScrollView implements
     Handler.Callback,
     ZoomScrollView.ScaleChangedListener,
     ScrollView.ScrollChangedListener,
     Tile.DrawingView,
-    Tile.Listener {
+    Tile.Listener,
+    TilingBitmapView.Provider {
 
   // constants
   private static final int RENDER_THROTTLE_ID = 0;
@@ -43,13 +43,13 @@ public class TileView extends View implements
   private int mZoom = 0;
   private int mImageSample = 1; // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
   private int mTileSize;
-  private boolean mIsDirty;
   private boolean mIsPrepared;
   private Detail mCurrentDetail;
   private Listener mListener;
 
   // variables (from build or attach)
-  private ZoomScrollView mZoomScrollView;
+  private FixedSizeViewGroup mContainer;
+  private TilingBitmapView mTilingBitmapView;
   private BitmapCache mDiskCache;
   private BitmapCache mMemoryCache;
   private BitmapPool mBitmapPool;
@@ -87,20 +87,24 @@ public class TileView extends View implements
 
   public TileView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
+    setScaleChangedListener(this);
+    setScrollChangedListener(this);
+    // as a ScrollView subclass, we can only use one child.
+    // this could be the TilingBitmapView if we didn't allow plugins
+    // use FixedSizeViewGroup as a simple, optimized layering scheme
+    // by calling it during construction, no other views will be allowed
+    // (unless the user hacks intended behavior by removing all views or by index)
+    mContainer = new FixedSizeViewGroup(context);
+    // we'll draw bitmaps to this view
+    mTilingBitmapView = new TilingBitmapView(this);
+    mContainer.addView(mTilingBitmapView);
+    addView(mContainer);
   }
 
   // public
 
   public int getZoom() {
     return mZoom;
-  }
-
-  public float getScale() {
-    return mZoomScrollView.getScale();
-  }
-
-  public void setScale(float scale) {
-    mZoomScrollView.setScale(scale);
   }
 
   public Listener getListener() {
@@ -111,30 +115,16 @@ public class TileView extends View implements
     mListener = listener;
   }
 
+  public ViewGroup getContainer() {
+    return mContainer;
+  }
+
   @SuppressWarnings("unchecked")
   public <T extends Plugin> T getPlugin(Class<T> clazz) {
     return (T) mPlugins.get(clazz);
   }
 
   // not
-
-  @Override
-  protected void onAttachedToWindow() {
-    super.onAttachedToWindow();
-    if (mZoomScrollView != null) {
-      return;
-    }
-    ViewParent parent = getParent();
-    while (!(parent instanceof ZoomScrollView)) {
-      if (parent == null) {
-        throw new IllegalStateException("TileView must be a descendant of a ZoomScrollView");
-      }
-      parent = getParent();
-    }
-    mZoomScrollView = (ZoomScrollView) parent;
-    mZoomScrollView.setScaleChangedListener(this);
-    mZoomScrollView.setScrollChangedListener(this);
-  }
 
   private boolean isReady() {
     return mIsPrepared && ViewCompat.isAttachedToWindow(this);
@@ -172,7 +162,7 @@ public class TileView extends View implements
     }
     updateScaledViewport();
     updateViewportAndComputeTilesThrottled();
-    invalidate();  // if this is setDirty or postInvalidate, things get wonky
+    mTilingBitmapView.invalidate();  // if this is setDirty or postInvalidate, things get wonky
   }
 
   protected void onZoomChanged(int current, int previous) {
@@ -260,23 +250,14 @@ public class TileView extends View implements
   }
 
   @Override
-  public void setDirty() {
-    if (mIsDirty) {
-      return;
-    }
-    mIsDirty = true;
-    postInvalidate();
+  public void drawTiles(Canvas canvas) {
+    drawPreviousTiles(canvas);
+    drawCurrentTiles(canvas);
   }
 
   @Override
-  protected void onDraw(Canvas canvas) {
-    super.onDraw(canvas);
-    canvas.save();
-    canvas.scale(getScale(), getScale());
-    drawPreviousTiles(canvas);
-    drawCurrentTiles(canvas);
-    canvas.restore();
-    mIsDirty = false;
+  public void setDirty() {
+    mTilingBitmapView.setDirty();
   }
 
   // Implementing Handler.Callback handleMessage to react to throttled requests to start a render op
@@ -300,10 +281,10 @@ public class TileView extends View implements
   }
 
   private void updateViewport() {
-    mViewport.left = mZoomScrollView.getScrollX();
-    mViewport.top = mZoomScrollView.getScrollY();
-    mViewport.right = mViewport.left + mZoomScrollView.getMeasuredWidth();
-    mViewport.bottom = mViewport.top + mZoomScrollView.getMeasuredHeight();
+    mViewport.left = getScrollX();
+    mViewport.top = getScrollY();
+    mViewport.right = mViewport.left + getMeasuredWidth();
+    mViewport.bottom = mViewport.top + getMeasuredHeight();
     updateScaledViewport();
   }
 
@@ -385,6 +366,9 @@ public class TileView extends View implements
     if (mDetailList.isEmpty()) {
       throw new IllegalStateException("TileView requires at least one defined detail level");
     }
+    if (mTilingBitmapView.getLayoutParams().width == 0 || mTilingBitmapView.getLayoutParams().height == 0) {
+      throw new IllegalStateException("TileView requires height and width be provided via Builder.setSize");
+    }
     mIsPrepared = true;
     determineCurrentDetail();
     updateViewportAndComputeTiles();
@@ -416,6 +400,36 @@ public class TileView extends View implements
     void onReady(TileView tileView);
   }
 
+  private static class FixedSizeViewGroup extends ViewGroup {
+
+    private int mWidth;
+    private int mHeight;
+
+    public FixedSizeViewGroup(Context context) {
+      super(context);
+    }
+
+    public void setSize(int width, int height) {
+      mWidth = width;
+      mHeight = height;
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+      for (int i = 0; i < getChildCount(); i++) {
+        View child = getChildAt(i);
+        child.layout(0, 0, mWidth, mHeight);
+      }
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+      measureChildren(widthMeasureSpec, heightMeasureSpec);
+      setMeasuredDimension(mWidth, mHeight);
+    }
+
+  }
+
   public static class Builder {
 
     private TileView mTileView;
@@ -436,9 +450,7 @@ public class TileView extends View implements
     }
 
     public Builder setSize(int width, int height) {
-      ViewGroup.LayoutParams layoutParams = mTileView.getLayoutParams();
-      layoutParams.width = width;
-      layoutParams.height = height;
+      mTileView.mContainer.setSize(width, height);
       return this;
     }
 
