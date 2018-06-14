@@ -111,6 +111,11 @@ public class MarkerPlugin extends ViewGroup implements Plugin, TileView.Listener
   };
 
   @Override
+  public void onZoomChanged(int zoom, int previous) {
+
+  }
+
+  @Override
   public void onScaleChanged(float scale, float previous) {
     mScale = scale;
     reposition();

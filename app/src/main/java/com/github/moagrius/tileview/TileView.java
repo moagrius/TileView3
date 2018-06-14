@@ -40,7 +40,6 @@ public class TileView extends View implements
   private static final int RENDER_THROTTLE_INTERVAL = 15;
 
   // variables (settable)
-  private float mScale = 1f;
   private int mZoom = 0;
   private int mImageSample = 1; // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
   private int mTileSize;
@@ -97,18 +96,11 @@ public class TileView extends View implements
   }
 
   public float getScale() {
-    return mScale;
+    return mZoomScrollView.getScale();
   }
 
   public void setScale(float scale) {
-    int previousZoom = mZoom;
-    mScale = scale;
-    mZoom = Detail.getZoomFromPercent(mScale);
-    if (mZoom != previousZoom) {
-      onZoomChanged(mZoom, previousZoom);
-    }
-    updateScaledViewport();
-    setDirty();
+    mZoomScrollView.setScale(scale);
   }
 
   public Listener getListener() {
@@ -153,17 +145,6 @@ public class TileView extends View implements
     determineCurrentDetail();
   }
 
-  protected void onZoomChanged(int current, int previous) {
-    mPreviouslyDrawnTiles.clear();
-    for (Tile tile : mTilesVisibleInViewport) {
-      if (tile.getState() == Tile.State.DECODED) {
-        mPreviouslyDrawnTiles.add(tile);
-      }
-    }
-    mTilesVisibleInViewport.clear();
-    determineCurrentDetail();
-  }
-
   @Override
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     super.onLayout(changed, left, top, right, bottom);
@@ -178,12 +159,33 @@ public class TileView extends View implements
     }
   }
 
+  // when our scale provider changes, we must follow suit
   @Override
   public void onScaleChanged(ZoomScrollView zoomScrollView, float currentScale, float previousScale) {
-    setScale(currentScale);
-    updateViewportAndComputeTilesThrottled();
     if (mListener != null) {
       mListener.onScaleChanged(currentScale, previousScale);
+    }
+    int previousZoom = mZoom;
+    mZoom = Detail.getZoomFromPercent(currentScale);
+    if (mZoom != previousZoom) {
+      onZoomChanged(mZoom, previousZoom);
+    }
+    updateScaledViewport();
+    updateViewportAndComputeTilesThrottled();
+    invalidate();  // if this is setDirty or postInvalidate, things get wonky
+  }
+
+  protected void onZoomChanged(int current, int previous) {
+    mPreviouslyDrawnTiles.clear();
+    for (Tile tile : mTilesVisibleInViewport) {
+      if (tile.getState() == Tile.State.DECODED) {
+        mPreviouslyDrawnTiles.add(tile);
+      }
+    }
+    mTilesVisibleInViewport.clear();
+    determineCurrentDetail();
+    if (mListener != null) {
+      mListener.onZoomChanged(current, previous);
     }
   }
 
@@ -270,7 +272,7 @@ public class TileView extends View implements
   protected void onDraw(Canvas canvas) {
     super.onDraw(canvas);
     canvas.save();
-    canvas.scale(mScale, mScale);
+    canvas.scale(getScale(), getScale());
     drawPreviousTiles(canvas);
     drawCurrentTiles(canvas);
     canvas.restore();
@@ -307,16 +309,17 @@ public class TileView extends View implements
 
   private void updateScaledViewport() {
     // set unfilled to entire viewport, virtualized to scale
+    float scale = getScale();
     mScaledViewport.set(
-        (int) (mViewport.left / mScale),
-        (int) (mViewport.top / mScale),
-        (int) (mViewport.right / mScale),
-        (int) (mViewport.bottom / mScale)
+        (int) (mViewport.left / scale),
+        (int) (mViewport.top / scale),
+        (int) (mViewport.right / scale),
+        (int) (mViewport.bottom / scale)
     );
   }
 
   public void populateTileGridFromViewport() {
-    float tileSize = mTileSize * mScale * mCurrentDetail.getSample();
+    float tileSize = mTileSize * getScale() * mCurrentDetail.getSample();
     mGrid.rows.start = Maths.roundDownWithStep(mViewport.top / tileSize, mImageSample);
     mGrid.rows.end = Maths.roundUpWithStep(mViewport.bottom / tileSize, mImageSample);
     mGrid.columns.start = Maths.roundDownWithStep(mViewport.left / tileSize, mImageSample);
@@ -407,6 +410,7 @@ public class TileView extends View implements
   }
 
   public interface Listener {
+    void onZoomChanged(int zoom, int previous);
     void onScaleChanged(float scale, float previous);
     void onScrollChanged(int x, int y);
     void onReady(TileView tileView);
