@@ -6,7 +6,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.widget.LinearLayout;
 
 import com.github.moagrius.tileview3.R;
-import com.github.moagrius.widget.ZoomScrollView;
+import com.github.moagrius.widget.ScalingScrollView;
 
 /**
  * @author Mike Dunn, 2/3/18.
@@ -18,8 +18,8 @@ public class ZoomScrollViewDemoTextViews extends AppCompatActivity {
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_demos_zoomscrollview_textviews);
-    ZoomScrollView zoomScrollView = findViewById(R.id.zoomscrollview);
-    zoomScrollView.setShouldVisuallyScaleContents(true);
+    ScalingScrollView scalingScrollView = findViewById(R.id.zoomscrollview);
+    scalingScrollView.setShouldVisuallyScaleContents(true);
     LinearLayout linearLayout = findViewById(R.id.linearlayout);
     for (int i = 0; i < 100; i++) {
       LinearLayout row = new LinearLayout(this);

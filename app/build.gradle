@@ -5,7 +5,7 @@ android {
   defaultConfig {
     vectorDrawables.useSupportLibrary = true
     applicationId "com.github.moagrius.tileview3"
-    minSdkVersion 14
+    minSdkVersion 19
     targetSdkVersion 27
     versionCode 30000
     versionName "3.0"

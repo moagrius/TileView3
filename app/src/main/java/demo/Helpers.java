@@ -17,8 +17,8 @@ public class Helpers {
       TextView textView = new TextView(context);
       textView.setText("Hi I'm TextView #" + i);
       textView.setTextSize(30);
-      textView.setPadding(20, 20, 20, 20);
-      textView.setBackgroundColor(Color.RED);
+      textView.setPadding(100, 100, 100, 100);
+      textView.setBackgroundColor(Color.BLACK);
       linearLayout.addView(textView);
     }
   }

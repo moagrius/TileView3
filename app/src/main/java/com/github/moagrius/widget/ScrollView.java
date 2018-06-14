@@ -256,12 +256,10 @@ public class ScrollView extends FrameLayout implements
     return false;
   }
 
+  /*
   @Override
   public boolean onInterceptTouchEvent(MotionEvent event) {
     final int action = event.getAction();
-    if ((action == MotionEvent.ACTION_MOVE) && (mIsDragging)) {
-      return true;
-    }
     if (super.onInterceptTouchEvent(event)) {
       return true;
     }
@@ -286,6 +284,7 @@ public class ScrollView extends FrameLayout implements
     }
     return mIsDragging;
   }
+  */
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {

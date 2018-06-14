@@ -18,7 +18,7 @@ import com.github.moagrius.tileview.io.StreamProviderAssets;
 import com.github.moagrius.tileview.plugins.Plugin;
 import com.github.moagrius.utils.Maths;
 import com.github.moagrius.widget.ScrollView;
-import com.github.moagrius.widget.ZoomScrollView;
+import com.github.moagrius.widget.ScalingScrollView;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -27,9 +27,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-public class TileView extends ZoomScrollView implements
+public class TileView extends ScalingScrollView implements
     Handler.Callback,
-    ZoomScrollView.ScaleChangedListener,
+    ScalingScrollView.ScaleChangedListener,
     ScrollView.ScrollChangedListener,
     Tile.DrawingView,
     Tile.Listener,
@@ -151,7 +151,7 @@ public class TileView extends ZoomScrollView implements
 
   // when our scale provider changes, we must follow suit
   @Override
-  public void onScaleChanged(ZoomScrollView zoomScrollView, float currentScale, float previousScale) {
+  public void onScaleChanged(ScalingScrollView scalingScrollView, float currentScale, float previousScale) {
     if (mListener != null) {
       mListener.onScaleChanged(currentScale, previousScale);
     }

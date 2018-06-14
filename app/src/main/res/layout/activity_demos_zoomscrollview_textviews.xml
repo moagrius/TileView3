@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.github.moagrius.widget.ZoomScrollView android:id="@+id/zoomscrollview"
-                                           xmlns:android="http://schemas.android.com/apk/res/android"
-                                           android:layout_width="match_parent"
-                                           android:layout_height="match_parent">
+<com.github.moagrius.widget.ScalingScrollView android:id="@+id/zoomscrollview"
+                                              xmlns:android="http://schemas.android.com/apk/res/android"
+                                              android:layout_width="match_parent"
+                                              android:layout_height="match_parent">
 
   <LinearLayout
     android:id="@+id/linearlayout"
@@ -10,4 +10,4 @@
     android:layout_height="wrap_content"
     android:orientation="vertical" />
 
-</com.github.moagrius.widget.ZoomScrollView>
+</com.github.moagrius.widget.ScalingScrollView>

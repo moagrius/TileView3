@@ -14,8 +14,7 @@ import java.lang.ref.WeakReference;
  * @author Mike Dunn, 2/2/18.
  */
 
-// TODO: demo with grid layout (or something like it)
-public class ZoomScrollView extends ScrollView implements
+public class ScalingScrollView extends ScrollView implements
   GestureDetector.OnDoubleTapListener,
   ScaleGestureDetector.OnScaleGestureListener {
 
@@ -39,15 +38,15 @@ public class ZoomScrollView extends ScrollView implements
   private boolean mShouldVisuallyScaleContents;
   private boolean mShouldLoopScale = true;
 
-  public ZoomScrollView(Context context) {
+  public ScalingScrollView(Context context) {
     this(context, null);
   }
 
-  public ZoomScrollView(Context context, AttributeSet attrs) {
+  public ScalingScrollView(Context context, AttributeSet attrs) {
     this(context, attrs, 0);
   }
 
-  public ZoomScrollView(Context context, AttributeSet attrs, int defStyleAttr) {
+  public ScalingScrollView(Context context, AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
     mScaleGestureDetector = new ScaleGestureDetector(context, this);
     mGestureDetector = new GestureDetector(context, this);
@@ -264,7 +263,7 @@ public class ZoomScrollView extends ScrollView implements
   }
 
   public interface ScaleChangedListener {
-    void onScaleChanged(ZoomScrollView zoomScrollView, float currentScale, float previousScale);
+    void onScaleChanged(ScalingScrollView scalingScrollView, float currentScale, float previousScale);
   }
 
   /**
@@ -273,25 +272,25 @@ public class ZoomScrollView extends ScrollView implements
 
   private static class ZoomScrollAnimator extends ValueAnimator implements ValueAnimator.AnimatorUpdateListener {
 
-    private WeakReference<ZoomScrollView> mZoomScrollViewWeakReference;
+    private WeakReference<ScalingScrollView> mZoomScrollViewWeakReference;
     private ZoomScrollState mStartState = new ZoomScrollState();
     private ZoomScrollState mEndState = new ZoomScrollState();
     private boolean mHasPendingZoomUpdates;
     private boolean mHasPendingScrollUpdates;
 
-    public ZoomScrollAnimator(ZoomScrollView zoomScrollView) {
+    public ZoomScrollAnimator(ScalingScrollView scalingScrollView) {
       super();
       addUpdateListener(this);
       setFloatValues(0f, 1f);
       setInterpolator(new FastEaseInInterpolator());
-      mZoomScrollViewWeakReference = new WeakReference<>(zoomScrollView);
+      mZoomScrollViewWeakReference = new WeakReference<>(scalingScrollView);
     }
 
     private boolean setupScrollAnimation(int x, int y) {
-      ZoomScrollView zoomScrollView = mZoomScrollViewWeakReference.get();
-      if (zoomScrollView != null) {
-        mStartState.x = zoomScrollView.getScrollX();
-        mStartState.y = zoomScrollView.getScrollY();
+      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      if (scalingScrollView != null) {
+        mStartState.x = scalingScrollView.getScrollX();
+        mStartState.y = scalingScrollView.getScrollY();
         mEndState.x = x;
         mEndState.y = y;
         return mStartState.x != mEndState.x || mStartState.y != mEndState.y;
@@ -300,9 +299,9 @@ public class ZoomScrollView extends ScrollView implements
     }
 
     private boolean setupZoomAnimation(float scale) {
-      ZoomScrollView zoomScrollView = mZoomScrollViewWeakReference.get();
-      if (zoomScrollView != null) {
-        mStartState.scale = zoomScrollView.getScale();
+      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      if (scalingScrollView != null) {
+        mStartState.scale = scalingScrollView.getScale();
         mEndState.scale = scale;
         return mStartState.scale != mEndState.scale;
       }
@@ -310,8 +309,8 @@ public class ZoomScrollView extends ScrollView implements
     }
 
     public void animate(int x, int y, float scale) {
-      ZoomScrollView zoomScrollView = mZoomScrollViewWeakReference.get();
-      if (zoomScrollView != null) {
+      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      if (scalingScrollView != null) {
         mHasPendingZoomUpdates = setupZoomAnimation(scale);
         mHasPendingScrollUpdates = setupScrollAnimation(x, y);
         if (mHasPendingScrollUpdates || mHasPendingZoomUpdates) {
@@ -321,8 +320,8 @@ public class ZoomScrollView extends ScrollView implements
     }
 
     public void animateZoom(float scale) {
-      ZoomScrollView zoomScrollView = mZoomScrollViewWeakReference.get();
-      if (zoomScrollView != null) {
+      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      if (scalingScrollView != null) {
         mHasPendingZoomUpdates = setupZoomAnimation(scale);
         if (mHasPendingZoomUpdates) {
           start();
@@ -331,8 +330,8 @@ public class ZoomScrollView extends ScrollView implements
     }
 
     public void animateScroll(int x, int y) {
-      ZoomScrollView zoomScrollView = mZoomScrollViewWeakReference.get();
-      if (zoomScrollView != null) {
+      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      if (scalingScrollView != null) {
         mHasPendingScrollUpdates = setupScrollAnimation(x, y);
         if (mHasPendingScrollUpdates) {
           start();
@@ -342,17 +341,17 @@ public class ZoomScrollView extends ScrollView implements
 
     @Override
     public void onAnimationUpdate(ValueAnimator animation) {
-      ZoomScrollView zoomScrollView = mZoomScrollViewWeakReference.get();
-      if (zoomScrollView != null) {
+      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      if (scalingScrollView != null) {
         float progress = (float) animation.getAnimatedValue();
         if (mHasPendingZoomUpdates) {
           float scale = mStartState.scale + (mEndState.scale - mStartState.scale) * progress;
-          zoomScrollView.setScale(scale);
+          scalingScrollView.setScale(scale);
         }
         if (mHasPendingScrollUpdates) {
           int x = (int) (mStartState.x + (mEndState.x - mStartState.x) * progress);
           int y = (int) (mStartState.y + (mEndState.y - mStartState.y) * progress);
-          zoomScrollView.scrollTo(x, y);
+          scalingScrollView.scrollTo(x, y);
         }
       }
     }
