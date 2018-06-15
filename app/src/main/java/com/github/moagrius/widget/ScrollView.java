@@ -11,7 +11,6 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.animation.AnimationUtils;
-import android.view.animation.Interpolator;
 import android.widget.FrameLayout;
 import android.widget.Scroller;
 
@@ -30,7 +29,7 @@ public class ScrollView extends FrameLayout {
   private static final int DIRECTION_BACKWARD = -1;
   private static final int DIRECTION_FORWARD = 1;
 
-  //private boolean mIsDragging;
+  private boolean mIsDragging;
   private boolean mSmoothScrollingEnabled = true;
   private long mLastScrolledAt;
 
@@ -167,7 +166,7 @@ public class ScrollView extends FrameLayout {
    * @return true if the ScrollView is currently dragging, false otherwise.
    */
   public boolean isDragging() {
-    return mScrollState == SCROLL_STATE_DRAGGING;
+    return mIsDragging;
   }
 
   /**
@@ -253,13 +252,10 @@ public class ScrollView extends FrameLayout {
     }
   }
 
-  private void initOrResetVelocityTracker() {
-    if (mVelocityTracker == null) {
-      mVelocityTracker = VelocityTracker.obtain();
-    } else {
-      mVelocityTracker.clear();
-    }
-  }
+
+
+
+
 
   private void initVelocityTrackerIfNotExists() {
     if (mVelocityTracker == null) {
@@ -274,23 +270,12 @@ public class ScrollView extends FrameLayout {
     }
   }
 
-  public static final int SCROLL_STATE_IDLE = 0;
-  public static final int SCROLL_STATE_DRAGGING = 1;
-  public static final int SCROLL_STATE_SETTLING = 2;
 
-  private int mScrollState = SCROLL_STATE_IDLE;
 
-  private ViewFlinger mViewFlinger = new ViewFlinger();
 
-  private void setScrollState(int state) {
-    if (state == mScrollState) {
-      return;
-    }
-    mScrollState = state;
-    if (state != SCROLL_STATE_SETTLING) {
-      mViewFlinger.stop();
-    }
-  }
+
+
+
 
   @Override
   public boolean onInterceptTouchEvent(MotionEvent e) {
@@ -309,12 +294,10 @@ public class ScrollView extends FrameLayout {
           mScroller.abortAnimation();
           mScroller.forceFinished(true);
         }
-        if (mScrollState == SCROLL_STATE_SETTLING) {
-          setScrollState(SCROLL_STATE_DRAGGING);
-        }
+
         break;
       case MotionEvent.ACTION_MOVE:
-        if (mScrollState != SCROLL_STATE_DRAGGING) {
+        if (!mIsDragging) {
           final int dx = x - mInitialTouchX;
           final int dy = y - mInitialTouchY;
           boolean startScroll = false;
@@ -327,7 +310,7 @@ public class ScrollView extends FrameLayout {
             startScroll = true;
           }
           if (startScroll) {
-            setScrollState(SCROLL_STATE_DRAGGING);
+
           }
         }
         break;
@@ -335,7 +318,7 @@ public class ScrollView extends FrameLayout {
         mVelocityTracker.clear();
         break;
     }
-    return mScrollState == SCROLL_STATE_DRAGGING;
+    return mIsDragging;
   }
 
   @Override
@@ -349,44 +332,16 @@ public class ScrollView extends FrameLayout {
     final int y = (int) e.getY();
     switch (action) {
       case MotionEvent.ACTION_DOWN:
-        mInitialTouchX = mLastTouchX = x;
-        mInitialTouchY = mLastTouchY = y;
 
         break;
       case MotionEvent.ACTION_MOVE:
-        if (mScrollState != SCROLL_STATE_DRAGGING) {
-          final int dx = x - mInitialTouchX;
-          final int dy = y - mInitialTouchY;
-          boolean startScroll = false;
-          if (Math.abs(dx) > mTouchSlop) {
-            mLastTouchX = mInitialTouchX + mTouchSlop * (dx < 0 ? -1 : 1);
-            startScroll = true;
-          }
-          if (Math.abs(dy) > mTouchSlop) {
-            mLastTouchY = mInitialTouchY + mTouchSlop * (dy < 0 ? -1 : 1);
-            startScroll = true;
-          }
-          if (startScroll) {
-            setScrollState(SCROLL_STATE_DRAGGING);
-          }
-        }
-        if (mScrollState == SCROLL_STATE_DRAGGING) {
-          final int dx = x - mLastTouchX;
-          final int dy = y - mLastTouchX;
-          scrollBy(dx, dy);
-        }
-        mLastTouchX = x;
-        mLastTouchY = y;
+
         break;
       case MotionEvent.ACTION_UP:
         mVelocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
-        final float velocityX = mVelocityTracker.getXVelocity();
-        final float velocityY = mVelocityTracker.getYVelocity();
-        if (velocityX != 0 || velocityY != 0) {
-          fling((int) velocityX, (int) velocityY);
-        } else {
-          setScrollState(SCROLL_STATE_IDLE);
-        }
+        final int velocityX = (int) mVelocityTracker.getXVelocity();
+        final int velocityY = (int) mVelocityTracker.getYVelocity();
+        fling(velocityX, velocityY);
         mVelocityTracker.clear();
         break;
     }
@@ -403,8 +358,7 @@ public class ScrollView extends FrameLayout {
     velocityX = (int) Math.max(-mMaximumVelocity, Math.min(velocityX, mMaximumVelocity));
     velocityY = (int) Math.max(-mMaximumVelocity, Math.min(velocityY, mMaximumVelocity));
     if (velocityX != 0 || velocityY != 0) {
-      mViewFlinger.fling(velocityX, velocityY);
-      //mScroller.fling(getScrollX(), getScrollY(), -velocityX, -velocityY, getScrollMinX(), getHorizontalScrollRange(), getScrollMinY(), getVerticalScrollRange());
+      mScroller.fling(getScrollX(), getScrollY(), -velocityX, -velocityY, getScrollMinX(), getHorizontalScrollRange(), getScrollMinY(), getVerticalScrollRange());
     }
   }
 
@@ -598,93 +552,6 @@ public class ScrollView extends FrameLayout {
       }
     }
     return false;
-  }
-
-  private class ViewFlinger implements Runnable {
-
-    private static final int MAX_SCROLL_DURATION = 2000;
-
-    private final Interpolator sQuinticInterpolator = new Interpolator() {
-      public float getInterpolation(float t) {
-        t -= 1.0f;
-        return t * t * t * t * t + 1.0f;
-      }
-    };
-
-    private int mLastFlingX;
-    private int mLastFlingY;
-    private Scroller mScroller;
-    private Interpolator mInterpolator = sQuinticInterpolator;
-    public ViewFlinger() {
-      mScroller = new Scroller(getContext());
-    }
-    @Override
-    public void run() {
-      if (mScroller.computeScrollOffset()) {
-        final int x = mScroller.getCurrX();
-        final int y = mScroller.getCurrY();
-        mLastFlingX = x;
-        mLastFlingY = y;
-        if (mScroller.isFinished()) {
-          setScrollState(SCROLL_STATE_IDLE);
-        } else {
-          ViewCompat.postOnAnimation(ScrollView.this, this);
-        }
-      }
-    }
-    public void fling(int velocityX, int velocityY) {
-      setScrollState(SCROLL_STATE_SETTLING);
-      mLastFlingX = mLastFlingY = 0;
-      mScroller.fling(0, 0, velocityX, velocityY,
-          Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE);
-      ViewCompat.postOnAnimation(ScrollView.this, this);
-    }
-    public void smoothScrollBy(int dx, int dy) {
-      smoothScrollBy(dx, dy, 0, 0);
-    }
-    public void smoothScrollBy(int dx, int dy, int vx, int vy) {
-      smoothScrollBy(dx, dy, computeScrollDuration(dx, dy, vx, vy));
-    }
-    private float distanceInfluenceForSnapDuration(float f) {
-      f -= 0.5f; // center the values about 0.
-      f *= 0.3f * Math.PI / 2.0f;
-      return (float) Math.sin(f);
-    }
-    private int computeScrollDuration(int dx, int dy, int vx, int vy) {
-      final int absDx = Math.abs(dx);
-      final int absDy = Math.abs(dy);
-      final boolean horizontal = absDx > absDy;
-      final int velocity = (int) Math.sqrt(vx * vx + vy * vy);
-      final int delta = (int) Math.sqrt(dx * dx + dy * dy);
-      final int containerSize = horizontal ? getWidth() : getHeight();
-      final int halfContainerSize = containerSize / 2;
-      final float distanceRatio = Math.min(1.f, 1.f * delta / containerSize);
-      final float distance = halfContainerSize + halfContainerSize *
-          distanceInfluenceForSnapDuration(distanceRatio);
-      final int duration;
-      if (velocity > 0) {
-        duration = 4 * Math.round(1000 * Math.abs(distance / velocity));
-      } else {
-        duration = (int) ((((float) absDx / containerSize) + 1) * 300);
-      }
-      return Math.min(duration, MAX_SCROLL_DURATION);
-    }
-    public void smoothScrollBy(int dx, int dy, int duration) {
-      smoothScrollBy(dx, dy, duration, sQuinticInterpolator);
-    }
-    public void smoothScrollBy(int dx, int dy, int duration, Interpolator interpolator) {
-      if (mInterpolator != interpolator) {
-        mInterpolator = interpolator;
-        mScroller = new Scroller(getContext());
-      }
-      setScrollState(SCROLL_STATE_SETTLING);
-      mLastFlingX = mLastFlingY = 0;
-      mScroller.startScroll(0, 0, dx, dy, duration);
-      ViewCompat.postOnAnimation(ScrollView.this, this);
-    }
-    public void stop() {
-      removeCallbacks(this);
-    }
   }
 
   public interface ScrollChangedListener {
