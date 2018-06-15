@@ -3,6 +3,7 @@ package com.github.moagrius.widget;
 import android.content.Context;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.FocusFinder;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -408,14 +409,20 @@ public class ScrollView extends FrameLayout {
           }
         }
         if (mIsDragging) {
+          mLastMotionX = x;
+          mLastMotionY = y;
           final int horizontalRange = getHorizontalScrollRange();
           final int verticalRange = getVerticalScrollRange();
           // Calling overScrollBy will call onOverScrolled, which
           // calls onScrollChanged if applicable.
+          Log.d("SV", "should be scrolling: " + deltaX + ", " + deltaY);
+          scrollTo(getScrollX() + deltaX, getScrollY() + deltaY);
+          /*
           if (overScrollBy(deltaX, deltaY, getScrollX(), getScrollY(), horizontalRange, verticalRange, mOverscrollDistance, mOverscrollDistance, true)) {
             // Break our velocity if we hit a scroll barrier.
             mVelocityTracker.clear();
           }
+          */
         }
         break;
       case MotionEvent.ACTION_UP:
@@ -427,6 +434,7 @@ public class ScrollView extends FrameLayout {
           int velocity = Math.max(Math.abs(initialVelocityX), Math.abs(initialVelocityY));
           if (hasContent()) {
             if (velocity > mMinimumVelocity) {
+              Log.d("SV", "should fling");
               //fling(-initialVelocityX);
             }
           }
@@ -440,7 +448,7 @@ public class ScrollView extends FrameLayout {
           recycleVelocityTracker();
         }
         break;
-
+    }
     return true;
   }
 
