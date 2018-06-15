@@ -15,13 +15,11 @@ import java.lang.ref.WeakReference;
  */
 
 public class ScalingScrollView extends ScrollView implements
-    GestureDetector.OnGestureListener,
     GestureDetector.OnDoubleTapListener,
     ScaleGestureDetector.OnScaleGestureListener {
 
   public enum MinimumScaleMode {CONTAIN, COVER, NONE}
 
-  private GestureDetector mGestureDetector;
   private ScaleGestureDetector mScaleGestureDetector;
 
   private ScaleChangedListener mScaleChangedListener;
@@ -50,7 +48,6 @@ public class ScalingScrollView extends ScrollView implements
   public ScalingScrollView(Context context, AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
     mScaleGestureDetector = new ScaleGestureDetector(context, this);
-    mGestureDetector = new GestureDetector(context, this);
     mZoomScrollAnimator = new ZoomScrollAnimator(this);
   }
 

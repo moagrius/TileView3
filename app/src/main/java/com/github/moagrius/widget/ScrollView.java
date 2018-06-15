@@ -14,7 +14,7 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
-import android.widget.OverScroller;
+import android.widget.Scroller;
 
 /**
  * @author Mike Dunn, 6/11/17.
@@ -27,21 +27,26 @@ import android.widget.OverScroller;
 public class ScrollView extends FrameLayout {
 
   private static final String ADD_VIEW_ERROR_MESSAGE = "ScrollView can host only one direct child";
-
   private static final int ANIMATED_SCROLL_GAP = 250;
-
   private static final int DIRECTION_BACKWARD = -1;
   private static final int DIRECTION_FORWARD = 1;
 
-  private boolean mIsFlinging;
   private boolean mIsDragging;
-
   private boolean mSmoothScrollingEnabled = true;
-
   private long mLastScrolledAt;
 
-  private OverScroller mScroller;
+  private VelocityTracker mVelocityTracker;
 
+  private float mMinimumVelocity;
+  private float mMaximumVelocity;
+
+  private int mTouchSlop;
+  private int mTouchSlopSquare;
+
+  private int mLastMotionX;
+  private int mLastMotionY;
+
+  private Scroller mScroller;
   private ScrollChangedListener mScrollChangedListener;
 
   /**
@@ -63,7 +68,12 @@ public class ScrollView extends FrameLayout {
     setClipChildren(false);
     setFocusable(true);
     setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
-    mScroller = new OverScroller(context);
+    mScroller = new Scroller(context);
+    ViewConfiguration viewConfiguration = ViewConfiguration.get(context);
+    mMinimumVelocity = viewConfiguration.getScaledMinimumFlingVelocity();
+    mMaximumVelocity = viewConfiguration.getScaledMaximumFlingVelocity();
+    mTouchSlop = viewConfiguration.getScaledTouchSlop();
+    mTouchSlopSquare = mTouchSlop * mTouchSlop;
   }
 
   private void assertSingleChild() {
@@ -104,7 +114,7 @@ public class ScrollView extends FrameLayout {
     mScrollChangedListener = scrollChangedListener;
   }
 
-  public void setScroller(OverScroller scroller) {
+  public void setScroller(Scroller scroller) {
     mScroller = scroller;
   }
 
@@ -147,7 +157,7 @@ public class ScrollView extends FrameLayout {
    * @return true if the ScrollView is currently flinging, false otherwise.
    */
   public boolean isFlinging() {
-    return mIsFlinging;
+    return mScroller != null && !mScroller.isFinished();
   }
 
   /**
@@ -213,7 +223,7 @@ public class ScrollView extends FrameLayout {
   @Override
   public boolean canScrollHorizontally(int direction) {
     int position = getScrollX();
-    return direction > 0 ? position < getScrollLimitX() : direction < 0 && position > 0;
+    return direction > 0 ? position < getHorizontalScrollRange() : direction < 0 && position > 0;
   }
 
   public boolean canScrollHorizontally() {
@@ -223,7 +233,7 @@ public class ScrollView extends FrameLayout {
   @Override
   public boolean canScrollVertically(int direction) {
     int position = getScrollY();
-    return direction > 0 ? position < getScrollLimitY() : direction < 0 && position > 0;
+    return direction > 0 ? position < getVerticalScrollRange() : direction < 0 && position > 0;
   }
 
   public boolean canScrollVertically() {
@@ -240,43 +250,6 @@ public class ScrollView extends FrameLayout {
     } else {
       scrollBy(x, y);
     }
-  }
-
-  private boolean inChild(int x, int y) {
-    if (getChildCount() > 0) {
-      final int scrollY = getScrollY();
-      final int scrollX = getScrollX();
-      final View child = getChildAt(0);
-      return !(y < child.getTop() - scrollY
-          || y >= child.getBottom() - scrollY
-          || x < child.getLeft() - scrollX
-          || x >= child.getRight() - scrollX);
-    }
-    return false;
-  }
-
-  private VelocityTracker mVelocityTracker;
-
-  private float mMinimumVelocity;
-  private float mMaximumVelocity;
-
-  private int mTouchSlop;
-  private int mTouchSlopSquare;
-
-  private int mLastMotionX;
-  private int mLastMotionY;
-  private float mDownFocusX;
-  private float mDownFocusY;
-
-  private int mOverscrollDistance;
-
-  {
-    ViewConfiguration viewConfiguration = ViewConfiguration.get(getContext());
-    mMinimumVelocity = viewConfiguration.getScaledMinimumFlingVelocity();
-    mMaximumVelocity = viewConfiguration.getScaledMaximumFlingVelocity();
-    mTouchSlop = viewConfiguration.getScaledTouchSlop();
-    mOverscrollDistance = viewConfiguration.getScaledOverscrollDistance();
-    mTouchSlopSquare = mTouchSlop * mTouchSlop;
   }
 
   private void initOrResetVelocityTracker() {
@@ -299,33 +272,19 @@ public class ScrollView extends FrameLayout {
     }
   }
 
-  private int getVerticalScrollRange() {
-    if (!hasContent()) {
-      return 0;
-    }
-    return Math.max(0, getContentHeight() - (getHeight() - getPaddingBottom() - getPaddingTop()));
-  }
-
-  private int getHorizontalScrollRange() {
-    if (!hasContent()) {
-      return 0;
-    }
-    return Math.max(0, getContentWidth() - (getWidth() - getPaddingLeft() - getPaddingRight()));
-  }
-
   @Override
-  public boolean onInterceptTouchEvent(MotionEvent ev) {
-    final int action = ev.getAction();
-    if ((action == MotionEvent.ACTION_MOVE) && (mIsDragging)) {
+  public boolean onInterceptTouchEvent(MotionEvent event) {
+    final int action = event.getAction();
+    if (action == MotionEvent.ACTION_MOVE && mIsDragging) {
       return true;
     }
-    if (super.onInterceptTouchEvent(ev)) {
+    if (super.onInterceptTouchEvent(event)) {
       return true;
     }
     switch (action & MotionEvent.ACTION_MASK) {
       case MotionEvent.ACTION_MOVE: {
-        final int x = (int) ev.getX();
-        final int y = (int) ev.getY();
+        final int x = (int) event.getX();
+        final int y = (int) event.getY();
         final int xDiff = Math.abs(x - mLastMotionX);
         final int yDiff = Math.abs(y - mLastMotionY);
         final int distance = (xDiff * xDiff) + (yDiff * yDiff);
@@ -334,7 +293,7 @@ public class ScrollView extends FrameLayout {
           mLastMotionX = x;
           mLastMotionY = y;
           initVelocityTrackerIfNotExists();
-          mVelocityTracker.addMovement(ev);
+          mVelocityTracker.addMovement(event);
           final ViewParent parent = getParent();
           if (parent != null) {
             parent.requestDisallowInterceptTouchEvent(true);
@@ -343,10 +302,10 @@ public class ScrollView extends FrameLayout {
         break;
       }
       case MotionEvent.ACTION_DOWN: {
-        mLastMotionX = (int) ev.getX();
-        mLastMotionY = (int) ev.getY();
+        mLastMotionX = (int) event.getX();
+        mLastMotionY = (int) event.getY();
         initOrResetVelocityTracker();
-        mVelocityTracker.addMovement(ev);
+        mVelocityTracker.addMovement(event);
         mScroller.computeScrollOffset();
         mIsDragging = !mScroller.isFinished();
         break;
@@ -361,15 +320,13 @@ public class ScrollView extends FrameLayout {
   }
 
   @Override
-  public boolean onTouchEvent(MotionEvent ev) {
+  public boolean onTouchEvent(MotionEvent event) {
     initVelocityTrackerIfNotExists();
-    final int actionMasked = ev.getActionMasked();
+    final int actionMasked = event.getActionMasked();
     switch (actionMasked) {
       case MotionEvent.ACTION_DOWN: {
-        if (getChildCount() == 0) {
-          return false;
-        }
-        if ((mIsDragging = !mScroller.isFinished())) {
+        mIsDragging = !mScroller.isFinished();
+        if (mIsDragging) {
           final ViewParent parent = getParent();
           if (parent != null) {
             parent.requestDisallowInterceptTouchEvent(true);
@@ -378,19 +335,16 @@ public class ScrollView extends FrameLayout {
         if (!mScroller.isFinished()) {
           mScroller.abortAnimation();
         }
-        // Remember where the motion event started
-        mLastMotionX = (int) ev.getX();
-        mLastMotionY = (int) ev.getY();
+        mLastMotionX = (int) event.getX();
+        mLastMotionY = (int) event.getY();
         break;
       }
       case MotionEvent.ACTION_MOVE:
-        final int x = (int) ev.getX();
-        final int y = (int) ev.getY();
+        final int x = (int) event.getX();
+        final int y = (int) event.getY();
         int deltaX = mLastMotionX - x;
         int deltaY = mLastMotionY - y;
-        int distanceX = Math.abs(deltaX);
-        int distanceY = Math.abs(deltaY); // redundant
-        final int distance = (distanceX * distanceX) + (distanceY * distanceY);
+        final int distance = (deltaX * deltaX) + (deltaY * deltaY);
         if (!mIsDragging && distance > mTouchSlopSquare) {
           final ViewParent parent = getParent();
           if (parent != null) {
@@ -411,39 +365,30 @@ public class ScrollView extends FrameLayout {
         if (mIsDragging) {
           mLastMotionX = x;
           mLastMotionY = y;
-          final int horizontalRange = getHorizontalScrollRange();
-          final int verticalRange = getVerticalScrollRange();
-          // Calling overScrollBy will call onOverScrolled, which
-          // calls onScrollChanged if applicable.
-          Log.d("SV", "should be scrolling: " + deltaX + ", " + deltaY);
-          scrollTo(getScrollX() + deltaX, getScrollY() + deltaY);
-          /*
-          if (overScrollBy(deltaX, deltaY, getScrollX(), getScrollY(), horizontalRange, verticalRange, mOverscrollDistance, mOverscrollDistance, true)) {
-            // Break our velocity if we hit a scroll barrier.
-            mVelocityTracker.clear();
-          }
-          */
+          scrollBy(deltaX, deltaY);
         }
         break;
       case MotionEvent.ACTION_UP:
         if (mIsDragging) {
-          final VelocityTracker velocityTracker = mVelocityTracker;
-          velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
-          int initialVelocityX = (int) velocityTracker.getXVelocity();
-          int initialVelocityY = (int) velocityTracker.getYVelocity();
-          int velocity = Math.max(Math.abs(initialVelocityX), Math.abs(initialVelocityY));
-          if (hasContent()) {
-            if (velocity > mMinimumVelocity) {
-              Log.d("SV", "should fling");
-              //fling(-initialVelocityX);
-            }
+          mVelocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
+          int velocityX = (int) mVelocityTracker.getXVelocity();
+          int velocityY = (int) mVelocityTracker.getYVelocity();
+          int velocity = Math.max(Math.abs(velocityX), Math.abs(velocityY));
+          if (velocity > mMinimumVelocity) {
+            Log.d("SV", "should fling");
+            mScroller.fling(
+                getScrollX(), getScrollY(),
+                -velocityX, -velocityY,
+                getScrollMinX(), getHorizontalScrollRange(),
+                getScrollMinY(), getVerticalScrollRange());
+            ViewCompat.postInvalidateOnAnimation(this);
           }
           mIsDragging = false;
           recycleVelocityTracker();
         }
         break;
       case MotionEvent.ACTION_CANCEL:
-        if (mIsDragging && hasContent()) {
+        if (mIsDragging) {
           mIsDragging = false;
           recycleVelocityTracker();
         }
@@ -451,17 +396,6 @@ public class ScrollView extends FrameLayout {
     }
     return true;
   }
-
-    public void fling(int velocityX) {
-      if (getChildCount() > 0) {
-//        int width = getWidth() - mPaddingRight - mPaddingLeft;
-//        int right = getChildAt(0).getWidth();
-//        mScroller.fling(mScrollX, mScrollY, velocityX, 0, 0,
-//            Math.max(0, right - width), 0, 0, width/2, 0);
-        postInvalidateOnAnimation();
-      }
-    }
-
 
   @Override
   public void scrollTo(int x, int y) {
@@ -474,73 +408,20 @@ public class ScrollView extends FrameLayout {
     }
   }
 
-
+  @Override
+  public void scrollBy(int x, int y) {
+    scrollTo(getScrollX() + x, getScrollY() + y);
+  }
 
   @Override
   public void computeScroll() {
     if (mScroller.computeScrollOffset()) {
       scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
-      mIsFlinging = !mScroller.isFinished();
-      if (mIsFlinging) {
+      if (!mScroller.isFinished()) {
         ViewCompat.postInvalidateOnAnimation(this);
       }
     }
   }
-
-  //@Override
-  public boolean onDown(MotionEvent event) {
-    if (mIsFlinging && !mScroller.isFinished()) {
-      mScroller.abortAnimation();
-      mScroller.forceFinished(true);
-    }
-    return true;
-  }
-
-  //@Override
-  public boolean onFling(MotionEvent event1, MotionEvent event2, float velocityX, float velocityY) {
-    mScroller.fling(
-        getScrollX(), getScrollY(),
-        (int) -velocityX, (int) -velocityY,
-        getScrollMinX(), getScrollLimitX(),
-        getScrollMinY(), getScrollLimitY());
-    ViewCompat.postInvalidateOnAnimation(this);
-    return true;
-  }
-
-  //@Override
-  public void onLongPress(MotionEvent event) {
-
-  }
-
-  ///@Override
-  public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-    if (!mIsDragging) {
-      mIsDragging = true;
-    }
-    int scrollEndX = getScrollX() + (int) distanceX;
-    int scrollEndY = getScrollY() + (int) distanceY;
-    scrollTo(scrollEndX, scrollEndY);
-    return true;
-  }
-
-  //@Override
-  public void onShowPress(MotionEvent event) {
-
-  }
-
-  //@Override
-  public boolean onSingleTapUp(MotionEvent event) {
-    return true;
-  }
-
-  //@Override
-  public boolean onTouchUp(MotionEvent event) {
-    if (mIsDragging) {
-      mIsDragging = false;
-    }
-    return true;
-  }
-
 
   protected boolean hasContent() {
     return getChildCount() > 0;
@@ -580,28 +461,14 @@ public class ScrollView extends FrameLayout {
    * default to 0) become the return value of this method which shifts the whole TileView.
    */
   protected int getConstrainedScrollX(int x) {
-    return Math.max(getScrollMinX(), Math.min(x, getScrollLimitX()));
+    return Math.max(getScrollMinX(), Math.min(x, getHorizontalScrollRange()));
   }
 
   /**
    * See {@link #getConstrainedScrollX(int)}
    */
   protected int getConstrainedScrollY(int y) {
-    return Math.max(getScrollMinY(), Math.min(y, getScrollLimitY()));
-  }
-
-  protected int getContentRight() {
-    if (hasContent()) {
-      return getChild().getLeft() + getContentWidth();
-    }
-    return 0;
-  }
-
-  protected int getScrollLimitX() {
-    if (hasContent()) {
-      return getContentRight() - getWidth(); // Math.max(0, blah) ?
-    }
-    return 0;
+    return Math.max(getScrollMinY(), Math.min(y, getVerticalScrollRange()));
   }
 
   protected int getContentBottom() {
@@ -611,11 +478,25 @@ public class ScrollView extends FrameLayout {
     return 0;
   }
 
-  protected int getScrollLimitY() {
+  protected int getContentRight() {
     if (hasContent()) {
-      return getContentBottom() - getHeight();  // Math.max(0, blah) ?
+      return getChild().getLeft() + getContentWidth();
     }
     return 0;
+  }
+
+  private int getVerticalScrollRange() {
+    if (!hasContent()) {
+      return 0;
+    }
+    return Math.max(0, getContentBottom() - (getHeight() - getPaddingBottom() - getPaddingTop()));
+  }
+
+  private int getHorizontalScrollRange() {
+    if (!hasContent()) {
+      return 0;
+    }
+    return Math.max(0, getContentRight() - (getWidth() - getPaddingLeft() - getPaddingRight()));
   }
 
   protected int getScrollMinX() {
