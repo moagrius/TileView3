@@ -131,6 +131,7 @@ public class LegacyScrollView extends FrameLayout implements
     child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
   }
 
+  @Override
   protected void measureChildWithMargins(View child, int parentWidthMeasureSpec, int widthUsed, int parentHeightMeasureSpec, int heightUsed) {
     MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
     final int horizontalUsedTotal = getPaddingLeft() + getPaddingRight() + lp.leftMargin + lp.rightMargin + widthUsed;

@@ -763,6 +763,26 @@ public class ScrollView extends FrameLayout {
 
   @Override
   protected void measureChild(View child, int parentWidthMeasureSpec, int parentHeightMeasureSpec) {
+    final int horizontalPadding = getPaddingLeft() + getPaddingRight();
+    final int verticalPadding = getPaddingTop() + getPaddingBottom();
+    final int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentWidthMeasureSpec) - horizontalPadding), MeasureSpec.UNSPECIFIED);
+    final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentHeightMeasureSpec) - verticalPadding), MeasureSpec.UNSPECIFIED);
+    child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+  }
+
+  @Override
+  protected void measureChildWithMargins(View child, int parentWidthMeasureSpec, int widthUsed, int parentHeightMeasureSpec, int heightUsed) {
+    MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
+    final int horizontalUsedTotal = getPaddingLeft() + getPaddingRight() + lp.leftMargin + lp.rightMargin + widthUsed;
+    final int verticalUsedTotal = getPaddingTop() + getPaddingBottom() + lp.topMargin + lp.bottomMargin + heightUsed;
+    final int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentWidthMeasureSpec) - horizontalUsedTotal), MeasureSpec.UNSPECIFIED);
+    final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentHeightMeasureSpec) - verticalUsedTotal), MeasureSpec.UNSPECIFIED);
+    child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+  }
+
+  /*
+  @Override
+  protected void measureChild(View child, int parentWidthMeasureSpec, int parentHeightMeasureSpec) {
     ViewGroup.LayoutParams lp = child.getLayoutParams();
     int childWidthMeasureSpec;
     int childHeightMeasureSpec;
@@ -778,6 +798,7 @@ public class ScrollView extends FrameLayout {
     final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(lp.topMargin + lp.bottomMargin, MeasureSpec.UNSPECIFIED);
     child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
   }
+  */
 
   @Override
   public void computeScroll() {
