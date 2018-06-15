@@ -49,8 +49,6 @@ public class ScalingScrollView extends ScrollView implements
   public ScalingScrollView(Context context, AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
     mScaleGestureDetector = new ScaleGestureDetector(context, this);
-    mGestureDetector = new GestureDetector(context, this);
-    mZoomScrollAnimator = new ZoomScrollAnimator(this);
   }
 
   @Override

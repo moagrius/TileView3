@@ -17,7 +17,7 @@ import com.github.moagrius.tileview.io.StreamProvider;
 import com.github.moagrius.tileview.io.StreamProviderAssets;
 import com.github.moagrius.tileview.plugins.Plugin;
 import com.github.moagrius.utils.Maths;
-import com.github.moagrius.widget.ScrollView;
+import com.github.moagrius.widget.LegacyScrollView;
 import com.github.moagrius.widget.ScalingScrollView;
 
 import java.io.IOException;
@@ -30,7 +30,7 @@ import java.util.Set;
 public class TileView extends ScalingScrollView implements
     Handler.Callback,
     ScalingScrollView.ScaleChangedListener,
-    ScrollView.ScrollChangedListener,
+    LegacyScrollView.ScrollChangedListener,
     Tile.DrawingView,
     Tile.Listener,
     TilingBitmapView.Provider {
@@ -142,7 +142,7 @@ public class TileView extends ScalingScrollView implements
   }
 
   @Override
-  public void onScrollChanged(ScrollView scrollView, int x, int y) {
+  public void onScrollChanged(LegacyScrollView scrollView, int x, int y) {
     updateViewportAndComputeTilesThrottled();
     if (mListener != null) {
       mListener.onScrollChanged(x, y);
