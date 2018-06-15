@@ -14,9 +14,10 @@ import java.lang.ref.WeakReference;
  * @author Mike Dunn, 2/2/18.
  */
 
-public class ScalingScrollView extends LegacyScrollView implements
-  GestureDetector.OnDoubleTapListener,
-  ScaleGestureDetector.OnScaleGestureListener {
+public class ScalingScrollView extends ScrollView implements
+    GestureDetector.OnGestureListener,
+    GestureDetector.OnDoubleTapListener,
+    ScaleGestureDetector.OnScaleGestureListener {
 
   public enum MinimumScaleMode {CONTAIN, COVER, NONE}
 
@@ -53,15 +54,15 @@ public class ScalingScrollView extends LegacyScrollView implements
     mZoomScrollAnimator = new ZoomScrollAnimator(this);
   }
 
-  @Override
-  public boolean onTouchEvent(MotionEvent event) {
-    boolean gestureIntercept = mGestureDetector.onTouchEvent(event);
-    boolean scaleIntercept = mScaleGestureDetector.onTouchEvent(event);
-    return gestureIntercept || scaleIntercept || super.onTouchEvent(event);
-  }
+//  @Override
+//  public boolean onTouchEvent(MotionEvent event) {
+//    boolean gestureIntercept = mGestureDetector.onTouchEvent(event);
+//    boolean scaleIntercept = mScaleGestureDetector.onTouchEvent(event);
+//    return gestureIntercept || scaleIntercept || super.onTouchEvent(event);
+//  }
 
   @Override
-  protected void onLayout( boolean changed, int l, int t, int r, int b ) {
+  protected void onLayout(boolean changed, int l, int t, int r, int b) {
     super.onLayout(changed, l, t, r, b);
     calculateMinimumScaleToFit();
   }
@@ -245,10 +246,7 @@ public class ScalingScrollView extends LegacyScrollView implements
   @Override
   public boolean onScale(ScaleGestureDetector scaleGestureDetector) {
     float currentScale = mScale * mScaleGestureDetector.getScaleFactor();
-    setScaleFromPosition(
-      (int) scaleGestureDetector.getFocusX(),
-      (int) scaleGestureDetector.getFocusY(),
-      currentScale);
+    setScaleFromPosition((int) scaleGestureDetector.getFocusX(), (int) scaleGestureDetector.getFocusY(), currentScale);
     return true;
   }
 
