@@ -20,7 +20,6 @@ public class ScalingScrollView extends ScrollView implements
 
   public enum MinimumScaleMode {CONTAIN, COVER, NONE}
 
-  private GestureDetector mGestureDetector;
   private ScaleGestureDetector mScaleGestureDetector;
 
   private ScaleChangedListener mScaleChangedListener;
@@ -48,14 +47,13 @@ public class ScalingScrollView extends ScrollView implements
 
   public ScalingScrollView(Context context, AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
+    mZoomScrollAnimator = new ZoomScrollAnimator(this);
     mScaleGestureDetector = new ScaleGestureDetector(context, this);
   }
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {
-    boolean gestureIntercept = mGestureDetector.onTouchEvent(event);
-    boolean scaleIntercept = mScaleGestureDetector.onTouchEvent(event);
-    return gestureIntercept || scaleIntercept || super.onTouchEvent(event);
+    return mScaleGestureDetector.onTouchEvent(event) || super.onTouchEvent(event);
   }
 
   @Override
@@ -217,6 +215,11 @@ public class ScalingScrollView extends ScrollView implements
 
   public void smoothScaleFromCenter(float scale) {
     smoothScaleFromFocalPoint(getHalfWidth(), getHalfHeight(), scale);
+  }
+
+  @Override
+  protected void onScrollChanged(int l, int t, int oldl, int oldt) {
+
   }
 
   // interface methods

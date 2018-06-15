@@ -6,6 +6,7 @@ import android.graphics.Rect;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.FocusFinder;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -19,6 +20,8 @@ import android.view.accessibility.AccessibilityEvent;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 import android.widget.OverScroller;
+
+import com.github.moagrius.tileview3.R;
 
 /**
  * This is a 2D scroller modified from ScrollView and HorizontalScrollView,
@@ -74,14 +77,14 @@ public class ScrollView extends FrameLayout {
   }
 
   public ScrollView(Context context, AttributeSet attrs) {
-    this(context, attrs, com.android.internal.R.attr.scrollViewStyle);
+    this(context, attrs, 0);
   }
 
   public ScrollView(Context context, AttributeSet attrs, int defStyle) {
     super(context, attrs, defStyle);
     initScrollView();
-    TypedArray a = context.obtainStyledAttributes(attrs, com.android.internal.R.styleable.ScrollView, defStyle, 0);
-    setFillViewport(a.getBoolean(com.android.internal.R.styleable.ScrollView_fillViewport, false));
+    TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.ScrollView, defStyle, 0);
+    setFillViewport(a.getBoolean(R.styleable.ScrollView_fillViewport, false));
     a.recycle();
   }
 
@@ -410,11 +413,14 @@ public class ScrollView extends FrameLayout {
 
   @Override
   public boolean onInterceptTouchEvent(MotionEvent event) {
+    Log.d("SV", "onInterceptTouchEvent");
     final int action = event.getAction();
-    if ((action == MotionEvent.ACTION_MOVE) && mIsBeingDragged) {
+    if (action == MotionEvent.ACTION_MOVE && mIsBeingDragged) {
+      Log.d("SV", "returning from intercept early because move + drag");
       return true;
     }
     if (!canScroll()) {
+      Log.d("SV", "returning from intercept early because can't scroll");
       return false;
     }
     switch (action & MotionEvent.ACTION_MASK) {
@@ -432,6 +438,7 @@ public class ScrollView extends FrameLayout {
         final int xDiff = Math.abs(x - mLastMotionX);
         final int yDiff = Math.abs(y - mLastMotionY);
         if (yDiff > mTouchSlop || xDiff > mTouchSlop) {
+          Log.d("SV", "moved farther than slop in intercept, set drag to true");
           mIsBeingDragged = true;
           mLastMotionY = y;
           mLastMotionX = x;
@@ -445,9 +452,11 @@ public class ScrollView extends FrameLayout {
         break;
       }
       case MotionEvent.ACTION_DOWN: {
+        Log.d("SV", "intercept, down");
         final int y = (int) event.getY();
         final int x = (int) event.getX();
         if (!inChild(x, y)) {
+          Log.d("SV", "not in child, recycle tracker");
           mIsBeingDragged = false;
           recycleVelocityTracker();
           break;
@@ -456,6 +465,7 @@ public class ScrollView extends FrameLayout {
         mLastMotionX = x;
         mActivePointerId = event.getPointerId(0);
         initOrResetVelocityTracker();
+        Log.d("SV", "just ran init or reset, tracker is: " + mVelocityTracker);
         mVelocityTracker.addMovement(event);
         mIsBeingDragged = !mScroller.isFinished();
         break;
@@ -464,7 +474,7 @@ public class ScrollView extends FrameLayout {
       case MotionEvent.ACTION_UP:
         mIsBeingDragged = false;
         mActivePointerId = INVALID_POINTER;
-        recycleVelocityTracker();
+        //recycleVelocityTracker();
         if (mScroller.springBack(getScrollX(), getScrollY(), 0, 0, 0, getVerticalScrollRange())) {
           postInvalidateOnAnimation();
         }
@@ -473,7 +483,8 @@ public class ScrollView extends FrameLayout {
         onSecondaryPointerUp(event);
         break;
     }
-    return mIsBeingDragged;
+    //return mIsBeingDragged;
+    return true;
   }
 
   @Override
@@ -515,36 +526,28 @@ public class ScrollView extends FrameLayout {
             parent.requestDisallowInterceptTouchEvent(true);
           }
           mIsBeingDragged = true;
-          if (deltaY > 0) {
-            deltaY -= mTouchSlop;
-          } else {
-            deltaY += mTouchSlop;
-          }
-          if (deltaX > 0) {
-            deltaX -= mTouchSlop;
-          } else {
-            deltaX += mTouchSlop;
-          }
         }
         if (mIsBeingDragged) {
           mLastMotionY = y;
           mLastMotionX = x;
-          if (overScrollBy(deltaX, deltaY, 0, getHorizontalScrollRange(), 0, getVerticalScrollRange(), mOverscrollDistance, mOverscrollDistance, true)) {
-            mVelocityTracker.clear();
-          }
+          // TODO: we might need to manually call scroll changed here
         }
         break;
       case MotionEvent.ACTION_UP:
+        Log.d("SV", "up");
         if (mIsBeingDragged) {
+          Log.d("SV", "dragging");
           final VelocityTracker velocityTracker = mVelocityTracker;
           velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
           int initialXVelocity = (int) velocityTracker.getXVelocity(mActivePointerId);
           int initialYVelocity = (int) velocityTracker.getYVelocity(mActivePointerId);
-          int initialVelocity = Math.max(initialXVelocity, initialYVelocity);
           if (hasContent()) {
-            if ((Math.abs(initialVelocity) > mMinimumVelocity)) {
+            Log.d("SV", "has content");
+            if (Math.abs(initialXVelocity) > mMinimumVelocity || Math.abs(initialYVelocity) > mMinimumVelocity) {
+              Log.d("SV", "has velocity...");
               fling(-initialXVelocity, -initialYVelocity);
             } else {
+              Log.d("SV", "failed to fling: vx=" + initialXVelocity + ", vy=" + initialYVelocity + ", min=" + mMinimumVelocity);
               if (mScroller.springBack(getScrollX(), getScrollY(), 0, getHorizontalScrollRange(), 0, getVerticalScrollRange())) {
                 postInvalidateOnAnimation();
               }

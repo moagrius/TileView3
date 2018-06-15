@@ -17,7 +17,6 @@ import com.github.moagrius.tileview.io.StreamProvider;
 import com.github.moagrius.tileview.io.StreamProviderAssets;
 import com.github.moagrius.tileview.plugins.Plugin;
 import com.github.moagrius.utils.Maths;
-import com.github.moagrius.widget.LegacyScrollView;
 import com.github.moagrius.widget.ScalingScrollView;
 
 import java.io.IOException;
@@ -30,7 +29,6 @@ import java.util.Set;
 public class TileView extends ScalingScrollView implements
     Handler.Callback,
     ScalingScrollView.ScaleChangedListener,
-    LegacyScrollView.ScrollChangedListener,
     Tile.DrawingView,
     Tile.Listener,
     TilingBitmapView.Provider {
@@ -88,7 +86,6 @@ public class TileView extends ScalingScrollView implements
   public TileView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
     setScaleChangedListener(this);
-    setScrollChangedListener(this);
     // as a ScrollView subclass, we can only use one child.
     // this could be the TilingBitmapView if we didn't allow plugins
     // use FixedSizeViewGroup as a simple, optimized layering scheme
@@ -142,7 +139,8 @@ public class TileView extends ScalingScrollView implements
   }
 
   @Override
-  public void onScrollChanged(LegacyScrollView scrollView, int x, int y) {
+  protected void onScrollChanged(int x, int y, int previousX, int previousY) {
+    super.onScrollChanged(x, y, previousX, previousY);
     updateViewportAndComputeTilesThrottled();
     if (mListener != null) {
       mListener.onScrollChanged(x, y);
