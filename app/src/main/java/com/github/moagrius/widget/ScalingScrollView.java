@@ -61,6 +61,13 @@ public class ScalingScrollView extends ScrollView implements
 //  }
 
   @Override
+  public boolean dispatchTouchEvent(MotionEvent event) {
+    boolean dispatched = super.dispatchTouchEvent(event);
+    boolean scaled = mScaleGestureDetector.onTouchEvent(event);
+    return dispatched || scaled;
+  }
+
+  @Override
   protected void onLayout( boolean changed, int l, int t, int r, int b ) {
     super.onLayout(changed, l, t, r, b);
     calculateMinimumScaleToFit();

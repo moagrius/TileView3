@@ -756,44 +756,107 @@ public class ScrollView extends FrameLayout {
     return Math.max(0, super.computeVerticalScrollOffset());
   }
 
-  @Override
-  protected void measureChild(View child, int parentWidthMeasureSpec, int parentHeightMeasureSpec) {
-    final int horizontalPadding = getPaddingLeft() + getPaddingRight();
-    final int verticalPadding = getPaddingTop() + getPaddingBottom();
-    final int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentWidthMeasureSpec) - horizontalPadding), MeasureSpec.UNSPECIFIED);
-    final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentHeightMeasureSpec) - verticalPadding), MeasureSpec.UNSPECIFIED);
-    child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+//  @Override
+//  protected void measureChild(View child, int parentWidthMeasureSpec, int parentHeightMeasureSpec) {
+//    final int horizontalPadding = getPaddingLeft() + getPaddingRight();
+//    final int verticalPadding = getPaddingTop() + getPaddingBottom();
+//    final int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentWidthMeasureSpec) - horizontalPadding), MeasureSpec.lp.);
+//    final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentHeightMeasureSpec) - verticalPadding), MeasureSpec.UNSPECIFIED);
+//    child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+//  }
+//
+//  @Override
+//  protected void measureChildWithMargins(View child, int parentWidthMeasureSpec, int widthUsed, int parentHeightMeasureSpec, int heightUsed) {
+//    MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
+//    final int horizontalUsedTotal = getPaddingLeft() + getPaddingRight() + lp.leftMargin + lp.rightMargin + widthUsed;
+//    final int verticalUsedTotal = getPaddingTop() + getPaddingBottom() + lp.topMargin + lp.bottomMargin + heightUsed;
+//    final int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentWidthMeasureSpec) - horizontalUsedTotal), MeasureSpec.UNSPECIFIED);
+//    final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentHeightMeasureSpec) - verticalUsedTotal), MeasureSpec.UNSPECIFIED);
+//    child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+//  }
+
+  public static int getScrollViewChildMeasureSpec(int spec, int padding, int childDimension) {
+    int specMode = MeasureSpec.getMode(spec);
+    int specSize = MeasureSpec.getSize(spec);
+
+    int size = Math.max(0, specSize - padding);
+
+    int resultSize = 0;
+    int resultMode = 0;
+
+    switch (specMode) {
+      case MeasureSpec.EXACTLY:
+        Log.d("SV", "spec mode is EXACTLY");
+        if (childDimension >= 0) {
+          Log.d("SV", "child spec has specified dimension: " + childDimension);
+          resultSize = childDimension;
+          resultMode = MeasureSpec.EXACTLY;
+        } else if (childDimension == LayoutParams.MATCH_PARENT) {
+          Log.d("SV", "child spec is MATCH_PARENT");
+          resultSize = size;
+          resultMode = MeasureSpec.EXACTLY;
+        } else if (childDimension == LayoutParams.WRAP_CONTENT) {
+          Log.d("SV", "child spec is WRAP_CONTENT");
+          resultSize = size;
+          resultMode = MeasureSpec.UNSPECIFIED;
+        }
+        break;
+
+      case MeasureSpec.AT_MOST:
+        Log.d("SV", "spec mode is AT MOST");
+        if (childDimension >= 0) {
+          Log.d("SV", "child spec has specified dimension: " + childDimension);
+          resultSize = childDimension;
+          resultMode = MeasureSpec.EXACTLY;
+        } else if (childDimension == LayoutParams.MATCH_PARENT) {
+          Log.d("SV", "child spec is MATCH_PARENT");
+          resultSize = size;
+          resultMode = MeasureSpec.AT_MOST;
+        } else if (childDimension == LayoutParams.WRAP_CONTENT) {
+          Log.d("SV", "child spec is WRAP_CONTENT");
+          resultSize = size;
+          resultMode = MeasureSpec.UNSPECIFIED;
+        }
+        break;
+
+      case MeasureSpec.UNSPECIFIED:
+        Log.d("SV", "spec mode is UNSPECIFIED (wrap)");
+        if (childDimension >= 0) {
+          Log.d("SV", "child spec has specified dimension: " + childDimension);
+          resultSize = childDimension;
+          resultMode = MeasureSpec.EXACTLY;
+        } else if (childDimension == LayoutParams.MATCH_PARENT) {
+          Log.d("SV", "child spec is MATCH_PARENT");
+          resultSize = size;
+          resultMode = MeasureSpec.UNSPECIFIED;
+        } else if (childDimension == LayoutParams.WRAP_CONTENT) {
+          Log.d("SV", "child spec is WRAP_CONTENT");
+          resultSize = size;
+          resultMode = MeasureSpec.UNSPECIFIED;
+        }
+        break;
+    }
+    //noinspection ResourceType
+    return MeasureSpec.makeMeasureSpec(resultSize, resultMode);
   }
 
-  @Override
-  protected void measureChildWithMargins(View child, int parentWidthMeasureSpec, int widthUsed, int parentHeightMeasureSpec, int heightUsed) {
-    MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
-    final int horizontalUsedTotal = getPaddingLeft() + getPaddingRight() + lp.leftMargin + lp.rightMargin + widthUsed;
-    final int verticalUsedTotal = getPaddingTop() + getPaddingBottom() + lp.topMargin + lp.bottomMargin + heightUsed;
-    final int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentWidthMeasureSpec) - horizontalUsedTotal), MeasureSpec.UNSPECIFIED);
-    final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0, MeasureSpec.getSize(parentHeightMeasureSpec) - verticalUsedTotal), MeasureSpec.UNSPECIFIED);
-    child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
-  }
-
-  /*
   @Override
   protected void measureChild(View child, int parentWidthMeasureSpec, int parentHeightMeasureSpec) {
     ViewGroup.LayoutParams lp = child.getLayoutParams();
     int childWidthMeasureSpec;
     int childHeightMeasureSpec;
-    childWidthMeasureSpec = getChildMeasureSpec(parentWidthMeasureSpec, getPaddingLeft() + getPaddingRight(), lp.width);
-    childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+    childWidthMeasureSpec = getScrollViewChildMeasureSpec(parentWidthMeasureSpec, getPaddingLeft() + getPaddingRight(), lp.width);
+    childHeightMeasureSpec = getScrollViewChildMeasureSpec(parentHeightMeasureSpec, getPaddingTop() + getPaddingBottom(), lp.height);
     child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
   }
 
   @Override
   protected void measureChildWithMargins(View child, int parentWidthMeasureSpec, int widthUsed, int parentHeightMeasureSpec, int heightUsed) {
     final MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
-    final int childWidthMeasureSpec = getChildMeasureSpec(parentWidthMeasureSpec, getPaddingLeft() + getPaddingRight() + lp.leftMargin + lp.rightMargin + widthUsed, lp.width);
-    final int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(lp.topMargin + lp.bottomMargin, MeasureSpec.UNSPECIFIED);
+    final int childWidthMeasureSpec = getScrollViewChildMeasureSpec(parentWidthMeasureSpec, getPaddingLeft() + getPaddingRight() + lp.leftMargin + lp.rightMargin + widthUsed, lp.width);
+    final int childHeightMeasureSpec = getScrollViewChildMeasureSpec(parentHeightMeasureSpec, getPaddingTop() + getPaddingBottom() + lp.topMargin + lp.bottomMargin + widthUsed, lp.height);
     child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
   }
-  */
 
   @Override
   public void computeScroll() {
@@ -1000,9 +1063,8 @@ public class ScrollView extends FrameLayout {
   @Override
   public void scrollTo(int x, int y) {
     if (hasContent()) {
-      View child = getChild();
-      x = clamp(x, getWidth() - getPaddingRight() - getPaddingLeft(), child.getWidth());
-      y = clamp(y, getHeight() - getPaddingBottom() - getPaddingTop(), child.getHeight());
+      x = getConstrainedScrollX(x);
+      y = getConstrainedScrollY(y);
       if (x != getScrollX() || y != getScrollY()) {
         super.scrollTo(x, y);
       }
