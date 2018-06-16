@@ -44,7 +44,7 @@ import com.github.moagrius.tileview3.R;
  * 5. Certain accessibility functions have been removed (e.g., does "scroll forward" mean down, or right?)
  * 6. Using a Scroller rather than an OverScroller; over-scroll seems less helpful for "panning" views than a list-type view.
  *
- * Mike Dunn 
+ * Mike Dunn
  * June 2018
  */
 

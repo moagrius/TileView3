@@ -269,9 +269,9 @@ public class ScalingScrollView extends ScrollView implements
 
   private static class ZoomScrollAnimator extends ValueAnimator implements ValueAnimator.AnimatorUpdateListener {
 
-    private WeakReference<ScalingScrollView> mZoomScrollViewWeakReference;
-    private ZoomScrollState mStartState = new ZoomScrollState();
-    private ZoomScrollState mEndState = new ZoomScrollState();
+    private WeakReference<ScalingScrollView> mScalingScrollViewWeakReference;
+    private ScaleAndScrollState mStartState = new ScaleAndScrollState();
+    private ScaleAndScrollState mEndState = new ScaleAndScrollState();
     private boolean mHasPendingZoomUpdates;
     private boolean mHasPendingScrollUpdates;
 
@@ -279,12 +279,12 @@ public class ScalingScrollView extends ScrollView implements
       super();
       addUpdateListener(this);
       setFloatValues(0f, 1f);
-      setInterpolator(new FastEaseInInterpolator());
-      mZoomScrollViewWeakReference = new WeakReference<>(scalingScrollView);
+      setInterpolator(new QuinticInterpolator());
+      mScalingScrollViewWeakReference = new WeakReference<>(scalingScrollView);
     }
 
     private boolean setupScrollAnimation(int x, int y) {
-      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      ScalingScrollView scalingScrollView = mScalingScrollViewWeakReference.get();
       if (scalingScrollView != null) {
         mStartState.x = scalingScrollView.getScrollX();
         mStartState.y = scalingScrollView.getScrollY();
@@ -296,7 +296,7 @@ public class ScalingScrollView extends ScrollView implements
     }
 
     private boolean setupZoomAnimation(float scale) {
-      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      ScalingScrollView scalingScrollView = mScalingScrollViewWeakReference.get();
       if (scalingScrollView != null) {
         mStartState.scale = scalingScrollView.getScale();
         mEndState.scale = scale;
@@ -306,7 +306,7 @@ public class ScalingScrollView extends ScrollView implements
     }
 
     public void animate(int x, int y, float scale) {
-      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      ScalingScrollView scalingScrollView = mScalingScrollViewWeakReference.get();
       if (scalingScrollView != null) {
         mHasPendingZoomUpdates = setupZoomAnimation(scale);
         mHasPendingScrollUpdates = setupScrollAnimation(x, y);
@@ -317,7 +317,7 @@ public class ScalingScrollView extends ScrollView implements
     }
 
     public void animateZoom(float scale) {
-      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      ScalingScrollView scalingScrollView = mScalingScrollViewWeakReference.get();
       if (scalingScrollView != null) {
         mHasPendingZoomUpdates = setupZoomAnimation(scale);
         if (mHasPendingZoomUpdates) {
@@ -327,7 +327,7 @@ public class ScalingScrollView extends ScrollView implements
     }
 
     public void animateScroll(int x, int y) {
-      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      ScalingScrollView scalingScrollView = mScalingScrollViewWeakReference.get();
       if (scalingScrollView != null) {
         mHasPendingScrollUpdates = setupScrollAnimation(x, y);
         if (mHasPendingScrollUpdates) {
@@ -338,7 +338,7 @@ public class ScalingScrollView extends ScrollView implements
 
     @Override
     public void onAnimationUpdate(ValueAnimator animation) {
-      ScalingScrollView scalingScrollView = mZoomScrollViewWeakReference.get();
+      ScalingScrollView scalingScrollView = mScalingScrollViewWeakReference.get();
       if (scalingScrollView != null) {
         float progress = (float) animation.getAnimatedValue();
         if (mHasPendingZoomUpdates) {
@@ -353,16 +353,18 @@ public class ScalingScrollView extends ScrollView implements
       }
     }
 
-    private static class ZoomScrollState {
+    private static class ScaleAndScrollState {
       public int x;
       public int y;
       public float scale;
     }
 
-    private static class FastEaseInInterpolator implements Interpolator {
+    // https://android.googlesource.com/platform/frameworks/support/+/master/v7/recyclerview/src/main/java/android/support/v7/widget/RecyclerView.java#514
+    private static class QuinticInterpolator implements Interpolator {
       @Override
-      public float getInterpolation(float input) {
-        return (float) (1 - Math.pow(1 - input, 8));
+      public float getInterpolation(float t) {
+        t -= 1.0f;
+        return t * t * t * t * t + 1.0f;
       }
     }
   }

@@ -17,12 +17,12 @@ import com.github.moagrius.tileview3.R;
  * @author Mike Dunn, 2/4/18.
  */
 
-public class ZoomScrollViewDemoTiles extends AppCompatActivity {
+public class TileViewDemo extends AppCompatActivity {
 
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_demos_zoomscrollview_tileview);
+    setContentView(R.layout.activity_demos_tileview);
 
     TileView tileView = findViewById(R.id.tileview);
     new TileView.Builder(tileView)
@@ -46,8 +46,8 @@ public class ZoomScrollViewDemoTiles extends AppCompatActivity {
       TextView infoWindow = new TextView(this);
       infoWindow.setText("I'm a callout!");
       infoWindow.setPadding(100, 100, 100, 100);
-      infoWindow.setBackgroundColor(Color.WHITE);
-      infoWindowPlugin.addMarker(infoWindow, 800, 800, 0.5f, -1f, 0, 0);
+      infoWindow.setBackgroundColor(Color.GRAY);
+      infoWindowPlugin.addMarker(infoWindow, 800, 800, -0.5f, -1f, 0, 0);
     });
 
   }
