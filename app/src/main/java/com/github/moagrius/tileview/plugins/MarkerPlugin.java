@@ -7,7 +7,8 @@ import android.view.ViewGroup;
 
 import com.github.moagrius.tileview.TileView;
 
-public class MarkerPlugin extends ViewGroup implements TileView.Plugin {
+// TODO: recycling
+public class MarkerPlugin extends ViewGroup implements TileView.Plugin, TileView.Listener {
 
   private float mScale = 1;
 

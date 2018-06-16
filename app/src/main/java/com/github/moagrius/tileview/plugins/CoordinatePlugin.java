@@ -4,7 +4,7 @@ import android.view.ViewGroup;
 
 import com.github.moagrius.tileview.TileView;
 
-public class CoordinatePlugin implements TileView.Plugin {
+public class CoordinatePlugin implements TileView.Plugin, TileView.Listener {
 
   private double mWest;
   private double mNorth;
@@ -28,7 +28,7 @@ public class CoordinatePlugin implements TileView.Plugin {
 
   @Override
   public void install(TileView tileView) {
-
+    tileView.addListener(this);
   }
 
   @Override
