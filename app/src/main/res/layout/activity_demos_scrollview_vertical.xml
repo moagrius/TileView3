@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.github.moagrius.widget.ScrollView android:id="@+id/scrollview"
-                                             xmlns:android="http://schemas.android.com/apk/res/android"
-                                             android:layout_width="match_parent"
-                                             android:layout_height="match_parent"
-                                             android:padding="20dp">
+                                       xmlns:android="http://schemas.android.com/apk/res/android"
+                                       android:layout_width="match_parent"
+                                       android:layout_height="match_parent"
+                                       android:background="#FFFFFF"
+                                       android:padding="20dp">
 
   <LinearLayout
-    android:id="@+id/linearlayout"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:paddingLeft="20dp"
-    android:paddingTop="20dp"
-    android:orientation="vertical" />
+      android:id="@+id/linearlayout"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical" />
 
 </com.github.moagrius.widget.ScrollView>
