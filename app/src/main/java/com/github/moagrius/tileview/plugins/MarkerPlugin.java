@@ -2,15 +2,13 @@ package com.github.moagrius.tileview.plugins;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.moagrius.tileview.TileView;
 
-public class MarkerPlugin extends ViewGroup implements Plugin, TileView.Listener {
+public class MarkerPlugin extends ViewGroup implements TileView.Plugin {
 
-  private TileView mTileView;
   private float mScale = 1;
 
   public MarkerPlugin(@NonNull Context context) {
@@ -19,9 +17,7 @@ public class MarkerPlugin extends ViewGroup implements Plugin, TileView.Listener
 
   @Override
   public void install(TileView tileView) {
-    mTileView = tileView;
-    mTileView.setListener(this);
-    mTileView.getContainer().addView(this);
+    tileView.getContainer().addView(this);
   }
 
   @Override
@@ -31,14 +27,8 @@ public class MarkerPlugin extends ViewGroup implements Plugin, TileView.Listener
       View child = getChildAt(i);
       populateLayoutParams(child);
     }
-    Log.d("TV", "mode = " + MeasureSpec.getMode(widthMeasureSpec));
     int availableWidth = MeasureSpec.getSize(widthMeasureSpec);
     int availableHeight = MeasureSpec.getSize(heightMeasureSpec);
-    Log.d("TV", "availableWidth = " + availableWidth + ", availableHeight = " + availableHeight);
-    ViewGroup parent = (ViewGroup) getParent();
-    Log.d("TV", "parent width = " + parent.getMeasuredWidth() + ", " + parent.getWidth());
-    int resolvedWidth = resolveSize(availableWidth, widthMeasureSpec);
-    Log.d("TV", "resolved width = " + resolvedWidth);
     setMeasuredDimension(availableWidth, availableHeight);
   }
 
@@ -86,24 +76,9 @@ public class MarkerPlugin extends ViewGroup implements Plugin, TileView.Listener
   }
 
   @Override
-  public void onZoomChanged(int zoom, int previous) {
-
-  }
-
-  @Override
   public void onScaleChanged(float scale, float previous) {
     mScale = scale;
     reposition();
-  }
-
-  @Override
-  public void onScrollChanged(int x, int y) {
-
-  }
-
-  @Override
-  public void onReady(TileView tileView) {
-
   }
 
   public void addMarker(View view, int left, int top, float relativeAnchorLeft, float relativeAnchorTop, float absoluteAnchorLeft, float absoluteAnchorTop) {

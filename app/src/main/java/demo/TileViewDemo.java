@@ -9,8 +9,12 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.github.moagrius.tileview.TileView;
+import com.github.moagrius.tileview.plugins.CoordinatePlugin;
+import com.github.moagrius.tileview.plugins.HotSpotPlugin;
 import com.github.moagrius.tileview.plugins.InfoWindowPlugin;
+import com.github.moagrius.tileview.plugins.LowFidelityBackgroundPlugin;
 import com.github.moagrius.tileview.plugins.MarkerPlugin;
+import com.github.moagrius.tileview.plugins.PathPlugin;
 import com.github.moagrius.tileview3.R;
 
 /**
@@ -28,6 +32,10 @@ public class TileViewDemo extends AppCompatActivity {
     new TileView.Builder(tileView)
         .installPlugin(new MarkerPlugin(this))
         .installPlugin(new InfoWindowPlugin(this))
+        .installPlugin(new CoordinatePlugin(0, 0, 0, 0))
+        .installPlugin(new HotSpotPlugin())
+        .installPlugin(new PathPlugin())
+        .installPlugin(new LowFidelityBackgroundPlugin())
         .setSize(17934, 13452)
         .defineZoomLevel("tiles/phi-1000000-%1$d_%2$d.jpg")
         .build();

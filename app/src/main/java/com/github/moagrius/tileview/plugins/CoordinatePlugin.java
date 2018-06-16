@@ -1,11 +1,10 @@
 package com.github.moagrius.tileview.plugins;
 
-import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.moagrius.tileview.TileView;
 
-public class CoordinatePlugin implements Plugin {
+public class CoordinatePlugin implements TileView.Plugin {
 
   private double mWest;
   private double mNorth;
@@ -29,20 +28,15 @@ public class CoordinatePlugin implements Plugin {
 
   @Override
   public void install(TileView tileView) {
-    tileView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
-      @Override
-      public void onViewAttachedToWindow(View v) {
-        ViewGroup.LayoutParams lp = tileView.getLayoutParams();
-        mPixelWidth = lp.width;
-        mPixelHeight = lp.height;
-        tileView.removeOnAttachStateChangeListener(this);
-      }
 
-      @Override
-      public void onViewDetachedFromWindow(View v) {
+  }
 
-      }
-    });
+  @Override
+  public void onReady(TileView tileView) {
+    ViewGroup.LayoutParams lp = tileView.getContainer().getLayoutParams();
+    mPixelWidth = lp.width;
+    mPixelHeight = lp.height;
+    tileView.removeListener(this);
   }
 
   /**

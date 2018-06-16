@@ -1,12 +1,13 @@
 package com.github.moagrius.tileview.plugins;
 
+import android.graphics.Canvas;
 import android.graphics.Path;
 
 import com.github.moagrius.tileview.TileView;
 
 import java.util.List;
 
-public class PathPlugin implements Plugin {
+public class PathPlugin implements TileView.Plugin, TileView.CanvasDecorator {
 
   /**
    * Convenience method to convert a List of coordinates (pairs of doubles) to a Path instance.
@@ -31,7 +32,11 @@ public class PathPlugin implements Plugin {
 
   @Override
   public void install(TileView tileView) {
-
+    tileView.addCanvasDecorator(this);
   }
 
+  @Override
+  public void decorate(Canvas canvas) {
+
+  }
 }

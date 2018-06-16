@@ -15,7 +15,6 @@ public class InfoWindowPlugin extends MarkerPlugin {
   public void install(TileView tileView) {
     super.install(tileView);
     bringToFront();
-    tileView.setListener(this);
   }
 
   @Override

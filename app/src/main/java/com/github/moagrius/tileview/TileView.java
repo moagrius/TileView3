@@ -10,19 +10,19 @@ import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.moagrius.tileview.io.StreamProvider;
 import com.github.moagrius.tileview.io.StreamProviderAssets;
-import com.github.moagrius.tileview.plugins.Plugin;
 import com.github.moagrius.utils.Maths;
 import com.github.moagrius.widget.ScalingScrollView;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,8 +42,12 @@ public class TileView extends ScalingScrollView implements
   private int mImageSample = 1; // sample will always be one unless we don't have a defined detail level, then its 1 shl for every zoom level from the last defined detail
   private int mTileSize;
   private boolean mIsPrepared;
+  private boolean mHasRunOnReady;
   private Detail mCurrentDetail;
-  private Listener mListener;
+
+  private Set<Listener> mListeners = new LinkedHashSet<>();
+  private Set<TouchListener> mTouchListeners = new LinkedHashSet<>();
+  private Set<CanvasDecorator> mCanvasDecorators = new LinkedHashSet<>();
 
   // variables (from build or attach)
   private FixedSizeViewGroup mContainer;
@@ -63,9 +67,13 @@ public class TileView extends ScalingScrollView implements
   // we keep our tiles in Sets
   // that means we're ensured uniqueness (so we don't have to think about if a tile is already scheduled or not)
   // and O(1) contains, as well as no penalty with foreach loops (excluding the allocation of the iterator)
-  private final Set<Tile> mNewlyVisibleTiles = new HashSet<>();
-  private final Set<Tile> mTilesVisibleInViewport = new HashSet<>();
-  private final Set<Tile> mPreviouslyDrawnTiles = new HashSet<>();
+  // we use the specific LinkedHashSet implementation to take advantage of potentially faster iteration on optimized VMS
+  // at the potential expense of more space required
+  // https://lemire.me/blog/2018/03/13/iterating-over-hash-sets-quickly-in-java/
+  // we'll use enhanced for loops without testing empty as well https://stackoverflow.com/a/20898524/6585616
+  private final Set<Tile> mNewlyVisibleTiles = new LinkedHashSet<>();
+  private final Set<Tile> mTilesVisibleInViewport = new LinkedHashSet<>();
+  private final Set<Tile> mPreviouslyDrawnTiles = new LinkedHashSet<>();
 
   private final Rect mViewport = new Rect();
   private final Rect mScaledViewport = new Rect();  // really just a buffer for unfilled region
@@ -98,18 +106,36 @@ public class TileView extends ScalingScrollView implements
     addView(mContainer);
   }
 
+  // TODO: override addViews?
+
   // public
 
   public int getZoom() {
     return mZoom;
   }
 
-  public Listener getListener() {
-    return mListener;
+  public boolean addListener(Listener listener) {
+    return mListeners.add(listener);
   }
 
-  public void setListener(Listener listener) {
-    mListener = listener;
+  public boolean removeListener(Listener listener) {
+    return mListeners.remove(listener);
+  }
+
+  public boolean addCanvasDecorator(CanvasDecorator decorator) {
+    return mCanvasDecorators.add(decorator);
+  }
+
+  public boolean removeCanvasDecorator(CanvasDecorator decorator) {
+    return mCanvasDecorators.remove(decorator);
+  }
+
+  public boolean addTouchListener(TouchListener touchListener) {
+    return mTouchListeners.add(touchListener);
+  }
+
+  public boolean removeTouchListener(TouchListener touchListener) {
+    return mTouchListeners.remove(touchListener);
   }
 
   public ViewGroup getContainer() {
@@ -123,10 +149,6 @@ public class TileView extends ScalingScrollView implements
 
   // not
 
-  private boolean isReady() {
-    return mIsPrepared && ViewCompat.isAttachedToWindow(this);
-  }
-
   private void defineZoomLevel(int zoom, Object data) {
     mDetailList.set(zoom, new Detail(zoom, data));
     determineCurrentDetail();
@@ -139,41 +161,51 @@ public class TileView extends ScalingScrollView implements
   }
 
   @Override
+  public boolean onInterceptTouchEvent(MotionEvent event) {
+    return super.onInterceptTouchEvent(event);
+  }
+
+  @Override
+  public boolean onTouchEvent(MotionEvent event) {
+    return super.onTouchEvent(event);
+  }
+
+  @Override
   protected void onScrollChanged(int x, int y, int previousX, int previousY) {
     super.onScrollChanged(x, y, previousX, previousY);
     updateViewportAndComputeTilesThrottled();
-    if (mListener != null) {
-      mListener.onScrollChanged(x, y);
+    for (Listener listener : mListeners) {
+      listener.onScrollChanged(x, y);
     }
   }
 
-  // when our scale provider changes, we must follow suit
   @Override
   public void onScaleChanged(ScalingScrollView scalingScrollView, float currentScale, float previousScale) {
-    if (mListener != null) {
-      mListener.onScaleChanged(currentScale, previousScale);
+    for (Listener listener : mListeners) {
+      listener.onScaleChanged(currentScale, previousScale);
     }
     int previousZoom = mZoom;
     mZoom = Detail.getZoomFromPercent(currentScale);
-    if (mZoom != previousZoom) {
-      onZoomChanged(mZoom, previousZoom);
+    boolean zoomChanged = mZoom != previousZoom;
+    if (zoomChanged) {
+      mPreviouslyDrawnTiles.clear();
+      for (Tile tile : mTilesVisibleInViewport) {
+        if (tile.getState() == Tile.State.DECODED) {
+          mPreviouslyDrawnTiles.add(tile);
+        }
+      }
+      mTilesVisibleInViewport.clear();
+      determineCurrentDetail();
     }
     updateScaledViewport();
     updateViewportAndComputeTilesThrottled();
-    mTilingBitmapView.invalidate();  // if this is setDirty or postInvalidate, things get wonky
-  }
-
-  protected void onZoomChanged(int current, int previous) {
-    mPreviouslyDrawnTiles.clear();
-    for (Tile tile : mTilesVisibleInViewport) {
-      if (tile.getState() == Tile.State.DECODED) {
-        mPreviouslyDrawnTiles.add(tile);
+    // if this is setDirty or postInvalidate, things get wonky
+    mTilingBitmapView.invalidate();
+    // if we call this in onZoomChanged, we might reference outdated values for viewport and tile sets
+    if (zoomChanged) {
+      for (Listener listener : mListeners) {
+        listener.onZoomChanged(mZoom, previousZoom);
       }
-    }
-    mTilesVisibleInViewport.clear();
-    determineCurrentDetail();
-    if (mListener != null) {
-      mListener.onZoomChanged(current, previous);
     }
   }
 
@@ -247,10 +279,19 @@ public class TileView extends ScalingScrollView implements
     }
   }
 
+  private void drawInterceptors(Canvas canvas) {
+    if (!mCanvasDecorators.isEmpty()) {
+      for (CanvasDecorator canvasDecorator : mCanvasDecorators) {
+        canvasDecorator.decorate(canvas);
+      }
+    }
+  }
+
   @Override
   public void drawTiles(Canvas canvas) {
     drawPreviousTiles(canvas);
     drawCurrentTiles(canvas);
+    drawInterceptors(canvas);
   }
 
   @Override
@@ -356,8 +397,21 @@ public class TileView extends ScalingScrollView implements
 
   public void destroy() {
     mExecutor.shutdownNow();
+    // TODO:
+    // mMemoryCache.clear();
+    // mDiskCache.clear();
     mTilePool.clear();
     mRenderThrottle.removeMessages(RENDER_THROTTLE_ID);
+  }
+
+  @Override
+  protected void onAttachedToWindow() {
+    super.onAttachedToWindow();
+    attemptOnReady();
+  }
+
+  private boolean isReady() {
+    return mIsPrepared && ViewCompat.isAttachedToWindow(this);
   }
 
   private void prepare() {
@@ -368,8 +422,18 @@ public class TileView extends ScalingScrollView implements
       throw new IllegalStateException("TileView requires height and width be provided via Builder.setSize");
     }
     mIsPrepared = true;
-    determineCurrentDetail();
-    updateViewportAndComputeTiles();
+    attemptOnReady();
+  }
+
+  private void attemptOnReady() {
+    if (isReady() && !mHasRunOnReady) {
+      mHasRunOnReady = true;
+      determineCurrentDetail();
+      updateViewportAndComputeTiles();
+      for (Listener listener : mListeners) {
+        listener.onReady(this);
+      }
+    }
   }
 
   private static class Grid {
@@ -379,6 +443,10 @@ public class TileView extends ScalingScrollView implements
       int start;
       int end;
     }
+  }
+
+  public interface Plugin {
+    void install(TileView tileView);
   }
 
   public interface BitmapCache {
@@ -392,10 +460,18 @@ public class TileView extends ScalingScrollView implements
   }
 
   public interface Listener {
-    void onZoomChanged(int zoom, int previous);
-    void onScaleChanged(float scale, float previous);
-    void onScrollChanged(int x, int y);
-    void onReady(TileView tileView);
+    default void onZoomChanged(int zoom, int previous){}
+    default void onScaleChanged(float scale, float previous){}
+    default void onScrollChanged(int x, int y){}
+    default void onReady(TileView tileView){}
+  }
+
+  public interface TouchListener {
+    void onTouch(MotionEvent event);
+  }
+
+  public interface CanvasDecorator {
+    void decorate(Canvas canvas);
   }
 
   private static class FixedSizeViewGroup extends ViewGroup {
@@ -410,6 +486,7 @@ public class TileView extends ScalingScrollView implements
     public void setSize(int width, int height) {
       mWidth = width;
       mHeight = height;
+      requestLayout();
     }
 
     @Override
@@ -422,7 +499,9 @@ public class TileView extends ScalingScrollView implements
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-      measureChildren(widthMeasureSpec, heightMeasureSpec);
+      int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(mWidth, MeasureSpec.EXACTLY);
+      int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(mHeight, MeasureSpec.EXACTLY);
+      measureChildren(childWidthMeasureSpec, childHeightMeasureSpec);
       setMeasuredDimension(mWidth, mHeight);
     }
 
@@ -461,8 +540,8 @@ public class TileView extends ScalingScrollView implements
       return this;
     }
 
-    public Builder setListener(TileView.Listener listener) {
-      mTileView.setListener(listener);
+    public Builder addListener(TileView.Listener listener) {
+      mTileView.addListener(listener);
       return this;
     }
 
@@ -520,11 +599,11 @@ public class TileView extends ScalingScrollView implements
       MemoryCache memoryCache = new MemoryCache(mMemoryCacheSize);
       mTileView.mMemoryCache = memoryCache;
       mTileView.mBitmapPool = memoryCache;
-      // if the policy is to cache something and the size is not 0, try to create a disk cache
-      // TODO: async?
       mTileView.mDiskCachePolicy = mDiskCachePolicy;
+      // if the policy is to cache something and the size is not 0, try to create a disk cache
       if (mDiskCachePolicy != DiskCachePolicy.CACHE_NONE && mDiskCacheSize > 0) {
         try {
+          // TODO: async?
           mTileView.mDiskCache = new DiskCache(mTileView.getContext(), mDiskCacheSize);
         } catch (IOException e) {
           // no op
