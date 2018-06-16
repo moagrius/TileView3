@@ -12,13 +12,13 @@ import com.github.moagrius.widget.ScalingScrollView;
  * @author Mike Dunn, 2/3/18.
  */
 
-public class ZoomScrollViewDemoTextViews extends AppCompatActivity {
+public class ScalingScrollViewDemoTextViews extends AppCompatActivity {
 
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_demos_zoomscrollview_textviews);
-    ScalingScrollView scalingScrollView = findViewById(R.id.zoomscrollview);
+    setContentView(R.layout.activity_demos_scalingscrollview_textviews);
+    ScalingScrollView scalingScrollView = findViewById(R.id.scalingscrollview);
     scalingScrollView.setShouldVisuallyScaleContents(true);
     LinearLayout linearLayout = findViewById(R.id.linearlayout);
     for (int i = 0; i < 100; i++) {

@@ -17,7 +17,7 @@ public class ScrollViewDemoHorizontal extends AppCompatActivity {
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_demos_scrollview_horizontal);
-    LinearLayout linearLayout = (LinearLayout) findViewById(R.id.linearlayout);
+    LinearLayout linearLayout = findViewById(R.id.linearlayout);
     Helpers.populateLinearLayout(linearLayout, 100);
   }
 }

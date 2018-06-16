@@ -3,6 +3,7 @@ package com.github.moagrius.widget;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -51,12 +52,10 @@ public class ScalingScrollView extends ScrollView implements
     mZoomScrollAnimator = new ZoomScrollAnimator(this);
   }
 
-//  @Override
-//  public boolean onTouchEvent(MotionEvent event) {
-//    boolean gestureIntercept = mGestureDetector.onTouchEvent(event);
-//    boolean scaleIntercept = mScaleGestureDetector.onTouchEvent(event);
-//    return gestureIntercept || scaleIntercept || super.onTouchEvent(event);
-//  }
+  @Override
+  public boolean onTouchEvent(MotionEvent event) {
+    return mScaleGestureDetector.onTouchEvent(event) || super.onTouchEvent(event);
+  }
 
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
@@ -79,12 +78,14 @@ public class ScalingScrollView extends ScrollView implements
   }
 
   public void setScale(float scale) {
+    Log.d("SSV", "setScale: " + scale);
     scale = getConstrainedDestinationScale(scale);
     if (mScale != scale) {
       float previous = mScale;
       mScale = scale;
       resetScrollPositionToWithinLimits();
       if (mShouldVisuallyScaleContents && hasContent()) {
+        Log.d("SSV", "should be scaling child");
         getChild().setPivotX(0);
         getChild().setPivotY(0);  // TODO: this is a hassle to prefab but would be more efficient
         getChild().setScaleX(mScale);
@@ -190,8 +191,10 @@ public class ScalingScrollView extends ScrollView implements
   }
 
   public void setScaleFromPosition(int offsetX, int offsetY, float scale) {
+    Log.d("SSV", "setScaleFromPosition: " + scale);
     scale = getConstrainedDestinationScale(scale);
     if (scale == mScale) {
+      Log.d("SSV", "")
       return;
     }
     int x = getOffsetScrollXFromScale(offsetX, scale, mScale);
@@ -242,6 +245,7 @@ public class ScalingScrollView extends ScrollView implements
 
   @Override
   public boolean onScale(ScaleGestureDetector scaleGestureDetector) {
+    Log.d("SSV", "onScale: " + mScaleGestureDetector.getScaleFactor());
     float currentScale = mScale * mScaleGestureDetector.getScaleFactor();
     setScaleFromPosition((int) scaleGestureDetector.getFocusX(), (int) scaleGestureDetector.getFocusY(), currentScale);
     return true;

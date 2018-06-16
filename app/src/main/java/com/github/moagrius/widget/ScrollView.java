@@ -35,16 +35,17 @@ public class ScrollView extends FrameLayout {
 
   private VelocityTracker mVelocityTracker;
 
-  private float mMinimumVelocity;
-  private float mMaximumVelocity;
-
-  private int mTouchSlop;
-  private int mTouchSlopSquare;
-
+  // we need to do our own gesture handling because of proper interception on child events (e.g., markers)
+  // gesture detector does not allow us this level of granularity
   private int mInitialTouchX;
   private int mInitialTouchY;
   private int mLastTouchX;
   private int mLastTouchY;
+
+  private float mMinimumVelocity;
+  private float mMaximumVelocity;
+
+  private int mTouchSlop;
 
   private Scroller mScroller;
   private ScrollChangedListener mScrollChangedListener;
@@ -73,7 +74,6 @@ public class ScrollView extends FrameLayout {
     mMinimumVelocity = viewConfiguration.getScaledMinimumFlingVelocity();
     mMaximumVelocity = viewConfiguration.getScaledMaximumFlingVelocity();
     mTouchSlop = viewConfiguration.getScaledTouchSlop();
-    mTouchSlopSquare = mTouchSlop * mTouchSlop;
   }
 
   private void assertSingleChild() {
@@ -252,31 +252,6 @@ public class ScrollView extends FrameLayout {
     }
   }
 
-
-
-
-
-
-  private void initVelocityTrackerIfNotExists() {
-    if (mVelocityTracker == null) {
-      mVelocityTracker = VelocityTracker.obtain();
-    }
-  }
-
-  private void recycleVelocityTracker() {
-    if (mVelocityTracker != null) {
-      mVelocityTracker.recycle();
-      mVelocityTracker = null;
-    }
-  }
-
-
-
-
-
-
-
-
   @Override
   public boolean onInterceptTouchEvent(MotionEvent e) {
     if (mVelocityTracker == null) {
@@ -294,28 +269,22 @@ public class ScrollView extends FrameLayout {
           mScroller.abortAnimation();
           mScroller.forceFinished(true);
         }
-
         break;
       case MotionEvent.ACTION_MOVE:
         if (!mIsDragging) {
           final int dx = x - mInitialTouchX;
           final int dy = y - mInitialTouchY;
-          boolean startScroll = false;
-          if (Math.abs(dx) > mTouchSlop) {
+          if (Math.abs(dx) > mTouchSlop || Math.abs(dy) > mTouchSlop) {
             mLastTouchX = mInitialTouchX + mTouchSlop * (dx < 0 ? -1 : 1);
-            startScroll = true;
-          }
-          if (Math.abs(dy) > mTouchSlop) {
             mLastTouchY = mInitialTouchY + mTouchSlop * (dy < 0 ? -1 : 1);
-            startScroll = true;
-          }
-          if (startScroll) {
-
+            mIsDragging = true;
           }
         }
         break;
       case MotionEvent.ACTION_UP:
+      case MotionEvent.ACTION_CANCEL:
         mVelocityTracker.clear();
+        mIsDragging = false;
         break;
     }
     return mIsDragging;
@@ -331,35 +300,39 @@ public class ScrollView extends FrameLayout {
     final int x = (int) e.getX();
     final int y = (int) e.getY();
     switch (action) {
-      case MotionEvent.ACTION_DOWN:
-
-        break;
       case MotionEvent.ACTION_MOVE:
-
+        if (mIsDragging) {
+          int deltaX = mLastTouchX - x;
+          int deltaY = mLastTouchY - y;
+          mLastTouchX = x;
+          mLastTouchY = y;
+          scrollBy(deltaX, deltaY);
+        }
         break;
       case MotionEvent.ACTION_UP:
         mVelocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
-        final int velocityX = (int) mVelocityTracker.getXVelocity();
-        final int velocityY = (int) mVelocityTracker.getYVelocity();
-        fling(velocityX, velocityY);
+        int velocityX = (int) mVelocityTracker.getXVelocity();
+        int velocityY = (int) mVelocityTracker.getYVelocity();
+        if (Math.abs(velocityX) < mMinimumVelocity) {
+          velocityX = 0;
+        }
+        if (Math.abs(velocityY) < mMinimumVelocity) {
+          velocityY = 0;
+        }
+        velocityX = (int) Math.max(-mMaximumVelocity, Math.min(velocityX, mMaximumVelocity));
+        velocityY = (int) Math.max(-mMaximumVelocity, Math.min(velocityY, mMaximumVelocity));
+        if (velocityX != 0 || velocityY != 0) {
+          mScroller.fling(getScrollX(), getScrollY(), -velocityX, -velocityY, getScrollMinX(), getHorizontalScrollRange(), getScrollMinY(), getVerticalScrollRange());
+        }
         mVelocityTracker.clear();
+        mIsDragging = false;
+        break;
+      case MotionEvent.ACTION_CANCEL:
+        mVelocityTracker.clear();
+        mIsDragging = false;
         break;
     }
     return true;
-  }
-
-  public void fling(int velocityX, int velocityY) {
-    if (Math.abs(velocityX) < mMinimumVelocity) {
-      velocityX = 0;
-    }
-    if (Math.abs(velocityY) < mMinimumVelocity) {
-      velocityY = 0;
-    }
-    velocityX = (int) Math.max(-mMaximumVelocity, Math.min(velocityX, mMaximumVelocity));
-    velocityY = (int) Math.max(-mMaximumVelocity, Math.min(velocityY, mMaximumVelocity));
-    if (velocityX != 0 || velocityY != 0) {
-      mScroller.fling(getScrollX(), getScrollY(), -velocityX, -velocityY, getScrollMinX(), getHorizontalScrollRange(), getScrollMinY(), getVerticalScrollRange());
-    }
   }
 
   @Override

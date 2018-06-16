@@ -16,12 +16,12 @@ import com.github.moagrius.tileview3.R;
  * @author Mike Dunn, 2/4/18.
  */
 
-public class ZoomScrollViewDemoTiles extends AppCompatActivity {
+public class TileViewDemo extends AppCompatActivity {
 
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_demos_zoomscrollview_tileview);
+    setContentView(R.layout.activity_demos_tileview);
 
     TileView tileView = findViewById(R.id.tileview);
     new TileView.Builder(tileView)

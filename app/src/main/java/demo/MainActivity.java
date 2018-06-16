@@ -34,19 +34,19 @@ public class MainActivity extends Activity {
     findViewById(R.id.textview_demos_zoomscrollview_textviews).setOnClickListener(new View.OnClickListener(){
       @Override
       public void onClick(View view) {
-        startDemo(ZoomScrollViewDemoTextViews.class);
+        startDemo(ScalingScrollViewDemoTextViews.class);
       }
     });
     findViewById(R.id.textview_demos_zoomscrollview_tiger).setOnClickListener(new View.OnClickListener(){
       @Override
       public void onClick(View view) {
-        startDemo(ZoomScrollViewDemoTiger.class);
+        startDemo(ScalingScrollViewDemoTiger.class);
       }
     });
     findViewById(R.id.textview_demos_zoomscrollview_tiles).setOnClickListener(new View.OnClickListener(){
       @Override
       public void onClick(View view) {
-        startDemo(ZoomScrollViewDemoTiles.class);
+        startDemo(TileViewDemo.class);
       }
     });
   }
