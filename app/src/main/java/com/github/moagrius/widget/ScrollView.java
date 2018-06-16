@@ -19,7 +19,7 @@ import android.view.ViewParent;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
-import android.widget.OverScroller;
+import android.widget.Scroller;
 
 import com.github.moagrius.tileview3.R;
 
@@ -34,7 +34,7 @@ import com.github.moagrius.tileview3.R;
  * At the time of this writing, KitKat and later accounted for more than 95% of devices according to https://developer.android.com/about/dashboards/
  *
  * I've modified from the source for a few reasons:
- * 1. Inaccessibility(package-private, internal, etc).
+ * 1. Inaccessibility (package-private, internal, etc).
  * 2. Anything that was required for functionality on both axes.
  * 3. There's very little left around child focus, as a 2D scroll view is likely to be a form container.
  * 4. Fading edge logic has been removed.
@@ -55,7 +55,7 @@ public class ScrollView extends FrameLayout {
 
   private long mLastScroll;
   private final Rect mTempRect = new Rect();
-  private OverScroller mScroller;
+  private Scroller mScroller;
   private int mLastMotionY;
   private int mLastMotionX;
   private boolean mIsLayoutDirty = true;
@@ -67,7 +67,6 @@ public class ScrollView extends FrameLayout {
   private int mTouchSlop;
   private int mMinimumVelocity;
   private int mMaximumVelocity;
-  private int mOverscrollDistance;
   private int mOverflingDistance;
   private int mActivePointerId = INVALID_POINTER;
   private SavedState mSavedState;
@@ -94,7 +93,7 @@ public class ScrollView extends FrameLayout {
   }
 
   private void initScrollView() {
-    mScroller = new OverScroller(getContext());
+    mScroller = new Scroller(getContext());
     setFocusable(true);
     setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
     setWillNotDraw(false);
@@ -102,7 +101,6 @@ public class ScrollView extends FrameLayout {
     mTouchSlop = configuration.getScaledTouchSlop();
     mMinimumVelocity = configuration.getScaledMinimumFlingVelocity();
     mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
-    mOverscrollDistance = configuration.getScaledOverscrollDistance();
     mOverflingDistance = configuration.getScaledOverflingDistance();
   }
 
@@ -475,16 +473,13 @@ public class ScrollView extends FrameLayout {
         mIsBeingDragged = false;
         mActivePointerId = INVALID_POINTER;
         //recycleVelocityTracker();
-        if (mScroller.springBack(getScrollX(), getScrollY(), 0, 0, 0, getVerticalScrollRange())) {
-          postInvalidateOnAnimation();
-        }
         break;
       case MotionEvent.ACTION_POINTER_UP:
         onSecondaryPointerUp(event);
         break;
     }
-    //return mIsBeingDragged;
-    return true;
+    return mIsBeingDragged;
+    //return true;
   }
 
   @Override
@@ -526,10 +521,21 @@ public class ScrollView extends FrameLayout {
             parent.requestDisallowInterceptTouchEvent(true);
           }
           mIsBeingDragged = true;
+          if (deltaX > 0) {
+            deltaX -= mTouchSlop;
+          } else {
+            deltaX += mTouchSlop;
+          }
+          if (deltaY > 0) {
+            deltaY -= mTouchSlop;
+          } else {
+            deltaY += mTouchSlop;
+          }
         }
         if (mIsBeingDragged) {
           mLastMotionY = y;
           mLastMotionX = x;
+          scrollBy(deltaX, deltaY);
           // TODO: we might need to manually call scroll changed here
         }
         break;
@@ -546,11 +552,6 @@ public class ScrollView extends FrameLayout {
             if (Math.abs(initialXVelocity) > mMinimumVelocity || Math.abs(initialYVelocity) > mMinimumVelocity) {
               Log.d("SV", "has velocity...");
               fling(-initialXVelocity, -initialYVelocity);
-            } else {
-              Log.d("SV", "failed to fling: vx=" + initialXVelocity + ", vy=" + initialYVelocity + ", min=" + mMinimumVelocity);
-              if (mScroller.springBack(getScrollX(), getScrollY(), 0, getHorizontalScrollRange(), 0, getVerticalScrollRange())) {
-                postInvalidateOnAnimation();
-              }
             }
           }
           mActivePointerId = INVALID_POINTER;
@@ -559,9 +560,6 @@ public class ScrollView extends FrameLayout {
         break;
       case MotionEvent.ACTION_CANCEL:
         if (mIsBeingDragged && hasContent()) {
-          if (mScroller.springBack(getScrollX(), getScrollY(), 0, getHorizontalScrollRange(), 0, getVerticalScrollRange())) {
-            postInvalidateOnAnimation();
-          }
           mActivePointerId = INVALID_POINTER;
           endDrag();
         }
@@ -641,9 +639,6 @@ public class ScrollView extends FrameLayout {
       setScrollY(scrollY);
       invalidate();
       onScrollChanged(getScrollX(), getScrollY(), oldX, oldY);
-      if (clampedY) {
-        mScroller.springBack(getScrollX(), getScrollY(), 0, getHorizontalScrollRange(), 0, getVerticalScrollRange());
-      }
     } else {
       super.scrollTo(scrollX, scrollY);
     }
@@ -992,7 +987,7 @@ public class ScrollView extends FrameLayout {
 
   public void fling(int velocityX, int velocityY) {
     if (hasContent()) {
-      mScroller.fling(getScrollX(), getScrollY(), velocityX, velocityY, 0, 0, getScrollLimitX(), getScrollLimitY(), getContentWidth() / 2, getContentHeight() / 2);
+      mScroller.fling(getScrollX(), getScrollY(), velocityX, velocityY, 0, getHorizontalScrollRange(), 0, getVerticalScrollRange());
       postInvalidateOnAnimation();
     }
   }

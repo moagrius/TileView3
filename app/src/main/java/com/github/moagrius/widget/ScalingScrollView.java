@@ -14,7 +14,7 @@ import java.lang.ref.WeakReference;
  * @author Mike Dunn, 2/2/18.
  */
 
-public class ScalingScrollView extends LegacyScrollView implements
+public class ScalingScrollView extends ScrollView implements
   GestureDetector.OnDoubleTapListener,
   ScaleGestureDetector.OnScaleGestureListener {
 
@@ -49,16 +49,16 @@ public class ScalingScrollView extends LegacyScrollView implements
   public ScalingScrollView(Context context, AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
     mScaleGestureDetector = new ScaleGestureDetector(context, this);
-    mGestureDetector = new GestureDetector(context, this);
+    //mGestureDetector = new GestureDetector(context, this);
     mZoomScrollAnimator = new ZoomScrollAnimator(this);
   }
 
-  @Override
-  public boolean onTouchEvent(MotionEvent event) {
-    boolean gestureIntercept = mGestureDetector.onTouchEvent(event);
-    boolean scaleIntercept = mScaleGestureDetector.onTouchEvent(event);
-    return gestureIntercept || scaleIntercept || super.onTouchEvent(event);
-  }
+//  @Override
+//  public boolean onTouchEvent(MotionEvent event) {
+//    //boolean gestureIntercept = mGestureDetector.onTouchEvent(event);
+//    boolean scaleIntercept = mScaleGestureDetector.onTouchEvent(event);
+//    return /*gestureIntercept || */scaleIntercept || super.onTouchEvent(event);
+//  }
 
   @Override
   protected void onLayout( boolean changed, int l, int t, int r, int b ) {

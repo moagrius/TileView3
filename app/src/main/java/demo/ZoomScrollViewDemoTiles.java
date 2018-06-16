@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -37,15 +38,16 @@ public class ZoomScrollViewDemoTiles extends AppCompatActivity {
     MarkerPlugin markerPlugin = tileView.getPlugin(MarkerPlugin.class);
     ImageView marker = new ImageView(this);
     marker.setImageResource(R.mipmap.ic_launcher);
-    markerPlugin.addMarker(marker, 6000, 6000, -0.5f, -1f, 0, 0);
+    markerPlugin.addMarker(marker, 800, 800, -0.5f, -1f, 0, 0);
 
     marker.setOnClickListener(view -> {
+      Log.d("SV", "clicked!");
       InfoWindowPlugin infoWindowPlugin = tileView.getPlugin(InfoWindowPlugin.class);
       TextView infoWindow = new TextView(this);
       infoWindow.setText("I'm a callout!");
       infoWindow.setPadding(100, 100, 100, 100);
       infoWindow.setBackgroundColor(Color.WHITE);
-      infoWindowPlugin.addMarker(infoWindow, 6000, 6000, 0.5f, -1f, 0, 0);
+      infoWindowPlugin.addMarker(infoWindow, 800, 800, 0.5f, -1f, 0, 0);
     });
 
   }
