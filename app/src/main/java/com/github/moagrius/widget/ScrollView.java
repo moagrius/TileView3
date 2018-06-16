@@ -28,17 +28,23 @@ import com.github.moagrius.tileview3.R;
  * taken from the KitKat release (API 16)
  * https://android.googlesource.com/platform/frameworks/base/+/kitkat-release/core/java/android/widget/ScrollView.java
  * https://android.googlesource.com/platform/frameworks/base/+/kitkat-release/core/java/android/widget/HorizontalScrollView.java
- * with references made to the most modern version at the time of this writing:
+ *
+ * Some minor changes also informed by the most modern version at the time of this writing:
  * https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/widget/ScrollView.java
+ * https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/widget/HorizontalScrollView.java
+ * and similar classes, like:
+ * https://android.googlesource.com/platform/frameworks/support/+/master/v7/recyclerview/src/main/java/android/support/v7/widget/RecyclerView.java
+ * https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/view/GestureDetector.java
  *
  * At the time of this writing, KitKat and later accounted for more than 95% of devices according to https://developer.android.com/about/dashboards/
  *
  * I've modified from the source for a few reasons:
- * 1. Inaccessibility (package-private, internal, etc).
- * 2. Anything that was required for functionality on both axes.
+ * 1. Anything that was required for functionality on both axes.
+ * 2. Inaccessibility (package-private, internal, etc).
  * 3. There's very little left around child focus, as a 2D scroll view is likely to be a form container.
  * 4. Fading edge logic has been removed.
  * 5. Certain accessibility functions have been removed (e.g., does "scroll forward" mean down, or right?)
+ * 6. Using a Scroller rather than an OverScroller; over-scroll seems less helpful for "panning" views than a list-type view.
  *
  * Mike Dunn 2018
  */
@@ -93,7 +99,6 @@ public class ScrollView extends FrameLayout {
   }
 
   private void initScrollView() {
-    mScroller = new Scroller(getContext());
     setFocusable(true);
     setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
     setWillNotDraw(false);
@@ -102,6 +107,7 @@ public class ScrollView extends FrameLayout {
     mMinimumVelocity = configuration.getScaledMinimumFlingVelocity();
     mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
     mOverflingDistance = configuration.getScaledOverflingDistance();
+    mScroller = new Scroller(getContext());
   }
 
   protected boolean hasContent() {
@@ -129,20 +135,26 @@ public class ScrollView extends FrameLayout {
     return 0;
   }
 
-  protected int getHalfWidth() {
-    return (int) ((getWidth() * 0.5f) + 0.5);
-  }
-
-  protected int getHalfHeight() {
-    return (int) ((getHeight() * 0.5f) + 0.5);
-  }
-
   protected int getConstrainedScrollX(int x) {
     return Math.max(getScrollMinX(), Math.min(x, getScrollLimitX()));
   }
 
   protected int getConstrainedScrollY(int y) {
     return Math.max(getScrollMinY(), Math.min(y, getScrollLimitY()));
+  }
+
+  private int getVerticalScrollRange() {
+    if (!hasContent()) {
+      return 0;
+    }
+    return Math.max(0, getContentHeight() - (getHeight() - getPaddingBottom() - getPaddingTop()));
+  }
+
+  private int getHorizontalScrollRange() {
+    if (!hasContent()) {
+      return 0;
+    }
+    return Math.max(0, getContentWidth() - (getWidth() - getPaddingLeft() - getPaddingRight()));
   }
 
   protected int getContentRight() {
@@ -154,7 +166,7 @@ public class ScrollView extends FrameLayout {
 
   protected int getScrollLimitX() {
     if (hasContent()) {
-      return getContentRight() - getWidth(); // Math.max(0, blah) ?
+      return getContentRight() - getWidth() - getPaddingRight() - getPaddingLeft(); // Math.max(0, blah) ?
     }
     return 0;
   }
@@ -168,7 +180,7 @@ public class ScrollView extends FrameLayout {
 
   protected int getScrollLimitY() {
     if (hasContent()) {
-      return getContentBottom() - getHeight();
+      return getContentBottom() - getHeight() - getPaddingBottom() - getPaddingTop();
     }
     return 0;
   }
@@ -411,14 +423,11 @@ public class ScrollView extends FrameLayout {
 
   @Override
   public boolean onInterceptTouchEvent(MotionEvent event) {
-    Log.d("SV", "onInterceptTouchEvent");
     final int action = event.getAction();
     if (action == MotionEvent.ACTION_MOVE && mIsBeingDragged) {
-      Log.d("SV", "returning from intercept early because move + drag");
       return true;
     }
     if (!canScroll()) {
-      Log.d("SV", "returning from intercept early because can't scroll");
       return false;
     }
     switch (action & MotionEvent.ACTION_MASK) {
@@ -436,7 +445,6 @@ public class ScrollView extends FrameLayout {
         final int xDiff = Math.abs(x - mLastMotionX);
         final int yDiff = Math.abs(y - mLastMotionY);
         if (yDiff > mTouchSlop || xDiff > mTouchSlop) {
-          Log.d("SV", "moved farther than slop in intercept, set drag to true");
           mIsBeingDragged = true;
           mLastMotionY = y;
           mLastMotionX = x;
@@ -450,11 +458,9 @@ public class ScrollView extends FrameLayout {
         break;
       }
       case MotionEvent.ACTION_DOWN: {
-        Log.d("SV", "intercept, down");
         final int y = (int) event.getY();
         final int x = (int) event.getX();
         if (!inChild(x, y)) {
-          Log.d("SV", "not in child, recycle tracker");
           mIsBeingDragged = false;
           recycleVelocityTracker();
           break;
@@ -463,7 +469,6 @@ public class ScrollView extends FrameLayout {
         mLastMotionX = x;
         mActivePointerId = event.getPointerId(0);
         initOrResetVelocityTracker();
-        Log.d("SV", "just ran init or reset, tracker is: " + mVelocityTracker);
         mVelocityTracker.addMovement(event);
         mIsBeingDragged = !mScroller.isFinished();
         break;
@@ -472,14 +477,13 @@ public class ScrollView extends FrameLayout {
       case MotionEvent.ACTION_UP:
         mIsBeingDragged = false;
         mActivePointerId = INVALID_POINTER;
-        //recycleVelocityTracker();
+        recycleVelocityTracker();
         break;
       case MotionEvent.ACTION_POINTER_UP:
         onSecondaryPointerUp(event);
         break;
     }
     return mIsBeingDragged;
-    //return true;
   }
 
   @Override
@@ -521,36 +525,23 @@ public class ScrollView extends FrameLayout {
             parent.requestDisallowInterceptTouchEvent(true);
           }
           mIsBeingDragged = true;
-          if (deltaX > 0) {
-            deltaX -= mTouchSlop;
-          } else {
-            deltaX += mTouchSlop;
-          }
-          if (deltaY > 0) {
-            deltaY -= mTouchSlop;
-          } else {
-            deltaY += mTouchSlop;
-          }
+          deltaX += mTouchSlop * (deltaX < 0 ? -1 : 1);
+          deltaY += mTouchSlop * (deltaY < 0 ? -1 : 1);
         }
         if (mIsBeingDragged) {
           mLastMotionY = y;
           mLastMotionX = x;
           scrollBy(deltaX, deltaY);
-          // TODO: we might need to manually call scroll changed here
         }
         break;
       case MotionEvent.ACTION_UP:
-        Log.d("SV", "up");
         if (mIsBeingDragged) {
-          Log.d("SV", "dragging");
           final VelocityTracker velocityTracker = mVelocityTracker;
           velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
           int initialXVelocity = (int) velocityTracker.getXVelocity(mActivePointerId);
           int initialYVelocity = (int) velocityTracker.getYVelocity(mActivePointerId);
           if (hasContent()) {
-            Log.d("SV", "has content");
             if (Math.abs(initialXVelocity) > mMinimumVelocity || Math.abs(initialYVelocity) > mMinimumVelocity) {
-              Log.d("SV", "has velocity...");
               fling(-initialXVelocity, -initialYVelocity);
             }
           }
@@ -654,20 +645,6 @@ public class ScrollView extends FrameLayout {
     event.setScrollY(getScrollY());
     event.setMaxScrollX(getHorizontalScrollRange());
     event.setMaxScrollY(getVerticalScrollRange());
-  }
-
-  private int getVerticalScrollRange() {
-    if (!hasContent()) {
-      return 0;
-    }
-    return Math.max(0, getContentHeight() - (getHeight() - getPaddingBottom() - getPaddingTop()));
-  }
-
-  private int getHorizontalScrollRange() {
-    if (!hasContent()) {
-      return 0;
-    }
-    return Math.max(0, getContentWidth() - (getWidth() - getPaddingLeft() - getPaddingRight()));
   }
 
   private boolean isOffScreen(View descendant) {
