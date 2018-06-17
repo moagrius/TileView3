@@ -76,6 +76,8 @@ public class MarkerPlugin extends ViewGroup implements TileView.Plugin, TileView
         LayoutParams layoutParams = populateLayoutParams(child);
         child.setLeft(layoutParams.mLeft);
         child.setTop(layoutParams.mTop);
+        child.setRight(layoutParams.mRight);
+        child.setBottom(layoutParams.mBottom);
       }
     }
   }

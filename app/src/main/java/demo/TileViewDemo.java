@@ -3,6 +3,7 @@ package demo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -19,6 +20,7 @@ import com.github.moagrius.tileview.plugins.PathPlugin;
 import com.github.moagrius.tileview3.R;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Mike Dunn, 2/4/18.
@@ -84,43 +86,53 @@ public class TileViewDemo extends AppCompatActivity {
       infoWindow.setBackgroundColor(Color.GRAY);
       infoWindowPlugin.show(infoWindow, x, y, -0.5f, -1f, 0, 0);
     });
+    
+    List<Point> points = new ArrayList<>();
+    for (double[] coordinate : coordinates) {
+      Point point = coordinatePlugin.getPointFromLatLng(coordinate[0], coordinate[1]);
+      points.add(point);
+    }
+
+    PathPlugin pathPlugin = tileView.getPlugin(PathPlugin.class);
+    pathPlugin.drawPath(points, null);
+
   }
 
-  private ArrayList<double[]> points = new ArrayList<>();
+  private ArrayList<double[]> coordinates = new ArrayList<>();
 
   {
-    points.add( new double[] {-75.1489070, 39.9484760} );
-    points.add( new double[] {-75.1494000, 39.9487722} );
-    points.add( new double[] {-75.1468350, 39.9474180} );
-    points.add( new double[] {-75.1472000, 39.9482000} );
-    points.add( new double[] {-75.1437980, 39.9508290} );
-    points.add( new double[] {-75.1479650, 39.9523130} );
-    points.add( new double[] {-75.1445500, 39.9472960} );
-    points.add( new double[] {-75.1506100, 39.9490630} );
-    points.add( new double[] {-75.1521278, 39.9508083} );
-    points.add( new double[] {-75.1477600, 39.9475320} );
-    points.add( new double[] {-75.1503800, 39.9489900} );
-    points.add( new double[] {-75.1464200, 39.9482000} );
-    points.add( new double[] {-75.1464850, 39.9498500} );
-    points.add( new double[] {-75.1487030, 39.9524300} );
-    points.add( new double[] {-75.1500167, 39.9488750} );
-    points.add( new double[] {-75.1458360, 39.9479700} );
-    points.add( new double[] {-75.1498222, 39.9515389} );
-    points.add( new double[] {-75.1501990, 39.9498900} );
-    points.add( new double[] {-75.1460060, 39.9474210} );
-    points.add( new double[] {-75.1490230, 39.9533960} );
-    points.add( new double[] {-75.1471980, 39.9485350} );
-    points.add( new double[] {-75.1493500, 39.9490200} );
-    points.add( new double[] {-75.1500910, 39.9503850} );
-    points.add( new double[] {-75.1483930, 39.9485040} );
-    points.add( new double[] {-75.1517260, 39.9473720} );
-    points.add( new double[] {-75.1525630, 39.9471360} );
-    points.add( new double[] {-75.1438400, 39.9473390} );
-    points.add( new double[] {-75.1468240, 39.9495400} );
-    points.add( new double[] {-75.1466410, 39.9499900} );
-    points.add( new double[] {-75.1465050, 39.9501110} );
-    points.add( new double[] {-75.1473460, 39.9436200} );
-    points.add( new double[] {-75.1501570, 39.9480430} );
+    coordinates.add( new double[] {-75.1489070, 39.9484760} );
+    coordinates.add( new double[] {-75.1494000, 39.9487722} );
+    coordinates.add( new double[] {-75.1468350, 39.9474180} );
+    coordinates.add( new double[] {-75.1472000, 39.9482000} );
+    coordinates.add( new double[] {-75.1437980, 39.9508290} );
+    coordinates.add( new double[] {-75.1479650, 39.9523130} );
+//    coordinates.add( new double[] {-75.1445500, 39.9472960} );
+//    coordinates.add( new double[] {-75.1506100, 39.9490630} );
+//    coordinates.add( new double[] {-75.1521278, 39.9508083} );
+//    coordinates.add( new double[] {-75.1477600, 39.9475320} );
+//    coordinates.add( new double[] {-75.1503800, 39.9489900} );
+//    coordinates.add( new double[] {-75.1464200, 39.9482000} );
+//    coordinates.add( new double[] {-75.1464850, 39.9498500} );
+//    coordinates.add( new double[] {-75.1487030, 39.9524300} );
+//    coordinates.add( new double[] {-75.1500167, 39.9488750} );
+//    coordinates.add( new double[] {-75.1458360, 39.9479700} );
+//    coordinates.add( new double[] {-75.1498222, 39.9515389} );
+//    coordinates.add( new double[] {-75.1501990, 39.9498900} );
+//    coordinates.add( new double[] {-75.1460060, 39.9474210} );
+//    coordinates.add( new double[] {-75.1490230, 39.9533960} );
+//    coordinates.add( new double[] {-75.1471980, 39.9485350} );
+//    coordinates.add( new double[] {-75.1493500, 39.9490200} );
+//    coordinates.add( new double[] {-75.1500910, 39.9503850} );
+//    coordinates.add( new double[] {-75.1483930, 39.9485040} );
+//    coordinates.add( new double[] {-75.1517260, 39.9473720} );
+//    coordinates.add( new double[] {-75.1525630, 39.9471360} );
+//    coordinates.add( new double[] {-75.1438400, 39.9473390} );
+//    coordinates.add( new double[] {-75.1468240, 39.9495400} );
+//    coordinates.add( new double[] {-75.1466410, 39.9499900} );
+//    coordinates.add( new double[] {-75.1465050, 39.9501110} );
+//    coordinates.add( new double[] {-75.1473460, 39.9436200} );
+//    coordinates.add( new double[] {-75.1501570, 39.9480430} );
   }
 
 }

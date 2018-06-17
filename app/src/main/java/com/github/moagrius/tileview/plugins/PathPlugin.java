@@ -3,6 +3,7 @@ package com.github.moagrius.tileview.plugins;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Point;
 
 import com.github.moagrius.tileview.TileView;
 
@@ -39,13 +40,13 @@ public class PathPlugin implements TileView.Plugin, TileView.CanvasDecorator {
     }
   }
 
-  public DrawablePath drawPath(List<int[]> positions, Paint paint) {
+  public DrawablePath drawPath(List<Point> positions, Paint paint) {
     Path path = new Path();
-    int[] start = positions.get(0);
-    path.moveTo(start[0], start[1]);
+    Point start = positions.get(0);
+    path.moveTo(start.x, start.y);
     for (int i = 1; i < positions.size(); i++) {
-      int[] position = positions.get(i);
-      path.lineTo(position[0], position[1]);
+      Point position = positions.get(i);
+      path.lineTo(position.x, position.y);
     }
     return addPath(path, paint);
   }
