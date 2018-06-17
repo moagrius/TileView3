@@ -39,10 +39,12 @@ public class TileViewDemo extends AppCompatActivity {
 //  public static final double SOUTH = 39.93699709962642;
 //  public static final double EAST = -75.12462846235614;
 
-  public static final double NORTH = -75.17261900652977;
-  public static final double WEST = 39.9639998777094;
-  public static final double SOUTH = -75.12462846235614;
-  public static final double EAST = 39.93699709962642;
+  // the 39.x are latitude
+  // the -75.x are longitude
+  public static final double NORTH_LONGITUDE = -75.17261900652977;
+  public static final double WEST_LATITUDE = 39.9639998777094;
+  public static final double SOUTH_LONGITUDE = -75.12462846235614;
+  public static final double EAST_LATITUDE = 39.93699709962642;
 
   /*
 
@@ -67,7 +69,7 @@ public class TileViewDemo extends AppCompatActivity {
     new TileView.Builder(tileView)
         .installPlugin(new MarkerPlugin(this))
         .installPlugin(new InfoWindowPlugin(this))
-        .installPlugin(new CoordinatePlugin(NORTH, WEST, SOUTH, EAST))
+        .installPlugin(new CoordinatePlugin(WEST_LATITUDE, NORTH_LONGITUDE, EAST_LATITUDE, SOUTH_LONGITUDE))
         .installPlugin(new HotSpotPlugin())
         .installPlugin(new PathPlugin())
         //.installPlugin(new LowFidelityBackgroundPlugin(bitmap))
@@ -91,7 +93,8 @@ public class TileViewDemo extends AppCompatActivity {
 
     List<Point> points = new ArrayList<>();
     for (double[] coordinate : coordinates.subList(11, 15)) {
-      Point point = coordinatePlugin.getPointFromLatLng(coordinate[0], coordinate[1]);
+      Point point = coordinatePlugin.getPointFromLatLng(coordinate[1], coordinate[0]);
+      Log.d("TV", "point=" + point);
       points.add(point);
     }
 

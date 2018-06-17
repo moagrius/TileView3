@@ -1,20 +1,21 @@
 package com.github.moagrius.tileview.plugins;
 
 import android.graphics.Point;
+import android.util.Log;
 
 import com.github.moagrius.tileview.TileView;
 
 /**
  * Note that coordinates are generally expressed as lat, lng
  * while 2D space is generally x, y
- * these are reversed - latitude is the x-axis of the earth, and longitude is the y-axis
+ * these are reversed - latitude is the y-axis of the earth, and longitude is the x-axis
  */
 public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener {
 
-  private double mWest;  // lat
-  private double mNorth; // lng
-  private double mEast;  // lat
-  private double mSouth; // lng
+  private double mWest;  // lng
+  private double mNorth; // lat
+  private double mEast;  // lng
+  private double mSouth; // lat
 
   private double mDistanceLatitude;
   private double mDistanceLongitude;
@@ -22,13 +23,13 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
   private int mPixelWidth;
   private int mPixelHeight;
 
-  public CoordinatePlugin(double west, double north, double east, double south) {
-    mWest = west;
-    mNorth = north;
-    mEast = east;
-    mSouth = south;
-    mDistanceLatitude = mEast - mWest;
-    mDistanceLongitude = mSouth - mNorth;
+  public CoordinatePlugin(double westLongitude, double northLatitude, double eastLongitude, double southLatitude) {
+    mWest = westLongitude;
+    mNorth = northLatitude;
+    mEast = eastLongitude;
+    mSouth = southLatitude;
+    mDistanceLongitude = mEast - mWest;
+    mDistanceLatitude = mSouth - mNorth;
   }
 
   @Override
@@ -49,18 +50,22 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
    * @return The translated position as a pixel value.
    */
   public int longitudeToX(double x) {
-    double factor = (x - mWest) / mDistanceLatitude;
+    double factor = (x - mWest) / mDistanceLongitude;
     return (int) (mPixelWidth * factor);
   }
 
   /**
-   * Translate a relative Y position to an absolute pixel value.
+   * Translate a latitude coordinate to an y pixel value.
    *
-   * @param y The relative Y position (e.g., latitude) to translate to absolute pixels.
+   * @param latitude The latitude coordinate to translate to an "x" pixel value.
    * @return The translated position as a pixel value.
    */
-  public int latitudeToY(double y) {
-    double factor = (y - mNorth) / mDistanceLongitude;
+  public int latitudeToY(double latitude) {
+    Log.d("TV", "latitude to translate=" + latitude);
+    double diff = latitude - mNorth;
+    Log.d("TV", "difference=" + diff);
+    
+    double factor = (latitude - mNorth) / mDistanceLatitude;
     return (int) (mPixelHeight * factor);
   }
 
@@ -71,7 +76,7 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
    * @return The relative value of the x coordinate supplied.
    */
   public double xToLongitude(int x) {
-    return mWest + (x * mDistanceLatitude / mPixelWidth);
+    return mWest + (x * mDistanceLongitude / mPixelWidth);
   }
 
   /**
@@ -81,7 +86,7 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
    * @return The relative value of the y coordinate supplied.
    */
   public double yToLatitude(int y) {
-    return mNorth + (y * mDistanceLongitude / mPixelHeight);
+    return mNorth + (y * mDistanceLatitude / mPixelHeight);
   }
 
   /**
@@ -92,7 +97,7 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
    * @return
    */
   public Point getPointFromLatLng(double latitude, double longitude) {
-    return new Point(latitudeToY(latitude), longitudeToX(longitude));
+    return new Point(longitudeToX(longitude), latitudeToY(latitude));
   }
 
   /**
