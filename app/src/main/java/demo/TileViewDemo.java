@@ -14,7 +14,6 @@ import com.github.moagrius.tileview.TileView;
 import com.github.moagrius.tileview.plugins.CoordinatePlugin;
 import com.github.moagrius.tileview.plugins.HotSpotPlugin;
 import com.github.moagrius.tileview.plugins.InfoWindowPlugin;
-import com.github.moagrius.tileview.plugins.LowFidelityBackgroundPlugin;
 import com.github.moagrius.tileview.plugins.MarkerPlugin;
 import com.github.moagrius.tileview.plugins.PathPlugin;
 import com.github.moagrius.tileview3.R;
@@ -48,20 +47,31 @@ public class TileViewDemo extends AppCompatActivity {
         .installPlugin(new CoordinatePlugin(NORTH, WEST, SOUTH, EAST))
         .installPlugin(new HotSpotPlugin())
         .installPlugin(new PathPlugin())
-        .installPlugin(new LowFidelityBackgroundPlugin(bitmap))
+        //.installPlugin(new LowFidelityBackgroundPlugin(bitmap))
         .setSize(17934, 13452)
         .defineZoomLevel("tiles/phi-1000000-%1$d_%2$d.jpg")
+        .addReadyListener(this::onReady)
         .build();
     //tileView.defineZoomLevel("tiles/phi-500000-%1$d_%2$d.jpg");
     //tileView.defineZoomLevel(1, "tiles/phi-500000-%1$d_%2$d.jpg");
     //tileView.defineZoomLevel(2, "tiles/phi-250000-%1$d_%2$d.jpg");
 
+  }
+
+  private void onReady(TileView tileView) {
+
+    Log.d("TV", "width=" + tileView.getContentWidth() + ", height=" + tileView.getContentHeight());
+
     CoordinatePlugin coordinatePlugin = tileView.getPlugin(CoordinatePlugin.class);
-    int x = coordinatePlugin.latitudeToY(-75.1489070);
-    int y = coordinatePlugin.longitudeToX(39.9484760);
+
+    int x = coordinatePlugin.longitudeToX(39.9484760);
+    int y = coordinatePlugin.latitudeToY(-75.1489070);
+
+    Log.d("TV", "x=" + x + ", y=" + y);
 
     MarkerPlugin markerPlugin = tileView.getPlugin(MarkerPlugin.class);
     ImageView marker = new ImageView(this);
+    marker.setBackgroundColor(Color.RED);
     marker.setImageResource(R.drawable.map_marker_normal);
     markerPlugin.addMarker(marker, x, y, -0.5f, -1f, 0, 0);
 
@@ -74,7 +84,6 @@ public class TileViewDemo extends AppCompatActivity {
       infoWindow.setBackgroundColor(Color.GRAY);
       infoWindowPlugin.show(infoWindow, x, y, -0.5f, -1f, 0, 0);
     });
-
   }
 
   private ArrayList<double[]> points = new ArrayList<>();

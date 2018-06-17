@@ -2,6 +2,7 @@ package com.github.moagrius.tileview.plugins;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -18,6 +19,7 @@ public class MarkerPlugin extends ViewGroup implements TileView.Plugin, TileView
 
   @Override
   public void install(TileView tileView) {
+    tileView.addListener(this);
     tileView.getContainer().addView(this);
   }
 
@@ -61,11 +63,13 @@ public class MarkerPlugin extends ViewGroup implements TileView.Plugin, TileView
       layoutParams.mTop = (int) (scaledY + heightOffset);
       layoutParams.mRight = layoutParams.mLeft + actualWidth;
       layoutParams.mBottom = layoutParams.mTop + actualHeight;
+      Log.d("TV", "marker left=" + layoutParams.mLeft + ", top=" + layoutParams.mTop);
     }
     return layoutParams;
   }
 
   private void reposition() {
+    Log.d("TV", "reposition markers");
     for (int i = 0; i < getChildCount(); i++) {
       View child = getChildAt(i);
       if (child.getVisibility() != GONE) {
@@ -78,6 +82,7 @@ public class MarkerPlugin extends ViewGroup implements TileView.Plugin, TileView
 
   @Override
   public void onScaleChanged(float scale, float previous) {
+    Log.d("TV", "marker plugin onscalechanged");
     mScale = scale;
     reposition();
   }
