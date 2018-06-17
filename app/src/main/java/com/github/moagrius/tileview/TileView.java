@@ -46,6 +46,7 @@ public class TileView extends ScalingScrollView implements
   private Detail mCurrentDetail;
 
   private Set<Listener> mListeners = new LinkedHashSet<>();
+  private Set<ReadyListener> mReadyListeners = new LinkedHashSet<>();
   private Set<TouchListener> mTouchListeners = new LinkedHashSet<>();
   private Set<CanvasDecorator> mCanvasDecorators = new LinkedHashSet<>();
 
@@ -120,6 +121,14 @@ public class TileView extends ScalingScrollView implements
 
   public boolean removeListener(Listener listener) {
     return mListeners.remove(listener);
+  }
+
+  public boolean addReadyListener(ReadyListener readyListener) {
+    return mReadyListeners.add(readyListener);
+  }
+
+  public boolean removeReadyListener(ReadyListener readyListener) {
+    return mReadyListeners.remove(readyListener);
   }
 
   public boolean addCanvasDecorator(CanvasDecorator decorator) {
@@ -430,9 +439,10 @@ public class TileView extends ScalingScrollView implements
       mHasRunOnReady = true;
       determineCurrentDetail();
       updateViewportAndComputeTiles();
-      for (Listener listener : mListeners) {
-        listener.onReady(this);
+      for (ReadyListener readyListener : mReadyListeners) {
+        readyListener.onReady(this);
       }
+      mReadyListeners.clear();
     }
   }
 
@@ -463,7 +473,10 @@ public class TileView extends ScalingScrollView implements
     default void onZoomChanged(int zoom, int previous){}
     default void onScaleChanged(float scale, float previous){}
     default void onScrollChanged(int x, int y){}
-    default void onReady(TileView tileView){}
+  }
+
+  public interface ReadyListener {
+    void onReady(TileView tileView);
   }
 
   public interface TouchListener {

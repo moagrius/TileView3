@@ -1,10 +1,15 @@
 package com.github.moagrius.tileview.plugins;
 
-import android.view.ViewGroup;
+import android.graphics.Point;
 
 import com.github.moagrius.tileview.TileView;
 
-public class CoordinatePlugin implements TileView.Plugin, TileView.Listener {
+/**
+ * Note that coordinates are generally expressed as lat, lng
+ * while 2D space is generally x, y
+ * these are reversed - latitude is the x-axis of the earth, and longitude is the y-axis
+ */
+public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener {
 
   private double mWest;
   private double mNorth;
@@ -28,15 +33,13 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.Listener {
 
   @Override
   public void install(TileView tileView) {
-    tileView.addListener(this);
+    tileView.addReadyListener(this);
   }
 
   @Override
   public void onReady(TileView tileView) {
-    ViewGroup.LayoutParams lp = tileView.getContainer().getLayoutParams();
-    mPixelWidth = lp.width;
-    mPixelHeight = lp.height;
-    tileView.removeListener(this);
+    mPixelWidth = tileView.getContentWidth();
+    mPixelHeight = tileView.getContentHeight();
   }
 
   /**
@@ -121,6 +124,17 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.Listener {
    */
   public double yToScaledLatitude(int y, float scale) {
     return yToLatitude((int) (y / scale));
+  }
+
+  /**
+   * Get a Point instance from lat lng coordinate.
+   *
+   * @param latitude
+   * @param longitude
+   * @return
+   */
+  public Point getPointFromLatLng(double latitude, double longitude) {
+    return new Point(latitudeToY(latitude), longitudeToX(longitude));
   }
 
   /**
