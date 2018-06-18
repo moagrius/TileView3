@@ -91,31 +91,34 @@ public class TileViewDemo extends AppCompatActivity {
     InfoWindowPlugin infoWindowPlugin = tileView.getPlugin(InfoWindowPlugin.class);
     MarkerPlugin markerPlugin = tileView.getPlugin(MarkerPlugin.class);
 
-    List<Point> points = new ArrayList<>();
-    for (double[] coordinate : coordinates.subList(11, 15)) {
-      Point point = coordinatePlugin.getPointFromLatLng(coordinate[1], coordinate[0]);
-      Log.d("TV", "point=" + point);
-      points.add(point);
-    }
+    List<double[]> sites = coordinates.subList(1, 5);
 
     // drop some markers, with info window expansions
-    String template = "Clicked marker at:\n%1$d\n%2$d";
+    String template = "Clicked marker at:\n%1$f\n%2$f";
     View.OnClickListener markerClickListener = view -> {
       Log.d("SV", "clicked!");
-      Point point = (Point) view.getTag();
+      double[] coordinate = (double[]) view.getTag();
+      int x = coordinatePlugin.longitudeToX(coordinate[1]);
+      int y = coordinatePlugin.latitudeToY(coordinate[0]);
+      tileView.smoothScrollTo(x - tileView.getMeasuredWidth() / 2, y - tileView.getMeasuredHeight() / 2);
       TextView infoWindow = new TextView(this);
-      String label = String.format(Locale.US, template, coordinatePlugin.yToLatitude(point.y), coordinatePlugin.xToLongitude(point.x));
+      String label = String.format(Locale.US, template, coordinate[0], coordinate[1]);
       infoWindow.setText(label);
       infoWindow.setPadding(100, 100, 100, 100);
       infoWindow.setBackgroundColor(Color.GRAY);
-      infoWindowPlugin.show(infoWindow, point.x, point.y, -0.5f, -1f, 0, 0);
+      // TODO: this feels clunky.  think about how to handle coordinates wrt markers and info windows
+      MarkerPlugin.LayoutParams lp = (MarkerPlugin.LayoutParams) view.getLayoutParams();
+      infoWindowPlugin.show(infoWindow, lp.x, lp.y, -0.5f, -1f, 0, 0);
     };
 
-    for (Point point : points) {
+    for (double[] coordinate : sites) {
+      int x = coordinatePlugin.longitudeToX(coordinate[1]);
+      int y = coordinatePlugin.latitudeToY(coordinate[0]);
       ImageView marker = new ImageView(this);
+      marker.setTag(coordinate);
       marker.setImageResource(R.drawable.map_marker_normal);
       marker.setOnClickListener(markerClickListener);
-      markerPlugin.addMarker(marker, point.x, point.y, -0.5f, -1f, 0, 0);
+      markerPlugin.addMarker(marker, x, y, -0.5f, -1f, 0, 0);
     }
 
     // draw a path
@@ -133,6 +136,15 @@ public class TileViewDemo extends AppCompatActivity {
         0x66000000);
     paint.setStrokeWidth(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, metrics));
     paint.setPathEffect(new CornerPathEffect(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, metrics)));
+
+    List<Point> points = new ArrayList<>();
+    for (double[] coordinate : sites) {
+      Point point = new Point();
+      point.x = coordinatePlugin.longitudeToX(coordinate[1]);
+      point.y = coordinatePlugin.latitudeToY(coordinate[0]);
+      Log.d("TV", "point=" + point);
+      points.add(point);
+    }
 
     PathPlugin pathPlugin = tileView.getPlugin(PathPlugin.class);
     pathPlugin.drawPath(points, paint);

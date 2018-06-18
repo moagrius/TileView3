@@ -1,6 +1,5 @@
 package com.github.moagrius.tileview.plugins;
 
-import android.graphics.Point;
 import android.util.Log;
 
 import com.github.moagrius.tileview.TileView;
@@ -10,7 +9,9 @@ import com.github.moagrius.tileview.TileView;
  * while 2D space is generally x, y
  * these are reversed - latitude is the y-axis of the earth, and longitude is the x-axis
  */
-public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener {
+public class CoordinatePlugin implements TileView.Plugin, TileView.Listener, TileView.ReadyListener {
+
+  private float mScale = 1;
 
   private double mWest;  // lng
   private double mNorth; // lat
@@ -35,6 +36,7 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
   @Override
   public void install(TileView tileView) {
     tileView.addReadyListener(this);
+    tileView.addListener(this);
   }
 
   @Override
@@ -43,15 +45,22 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
     mPixelHeight = tileView.getContentHeight();
   }
 
+  @Override
+  public void onScaleChanged(float scale, float previous) {
+    mScale = scale;
+  }
+
+  // coordinate to pixel is multiplied by scale, pixel to coordinate is divided by scale
+
   /**
    * Translate a relative X position to an absolute pixel value.
    *
-   * @param x The relative X position (e.g., longitude) to translate to absolute pixels.
+   * @param longitude The relative X position (e.g., longitude) to translate to absolute pixels.
    * @return The translated position as a pixel value.
    */
-  public int longitudeToX(double x) {
-    double factor = (x - mWest) / mDistanceLongitude;
-    return (int) (mPixelWidth * factor);
+  public int longitudeToX(double longitude) {
+    double factor = (longitude - mWest) / mDistanceLongitude;
+    return (int) ((mPixelWidth * factor) * mScale);
   }
 
   /**
@@ -61,12 +70,15 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
    * @return The translated position as a pixel value.
    */
   public int latitudeToY(double latitude) {
-    Log.d("TV", "latitude to translate=" + latitude);
+    Log.d("TV", "latitude to translate=" + latitude + ", north=" + mNorth);
     double diff = latitude - mNorth;
     Log.d("TV", "difference=" + diff);
-    
-    double factor = (latitude - mNorth) / mDistanceLatitude;
-    return (int) (mPixelHeight * factor);
+    double factor = diff / mDistanceLatitude;
+    Log.d("TV", "factor=" + factor);
+    int y = (int) (mPixelHeight * factor);
+    Log.d("TV", "y=" + y);
+    //double factor = (latitude - mNorth) / mDistanceLatitude;
+    return (int) ((mPixelHeight * factor) * mScale);
   }
 
   /**
@@ -76,7 +88,7 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
    * @return The relative value of the x coordinate supplied.
    */
   public double xToLongitude(int x) {
-    return mWest + (x * mDistanceLongitude / mPixelWidth);
+    return mWest + (x / mScale) * mDistanceLongitude / mPixelWidth;
   }
 
   /**
@@ -86,65 +98,7 @@ public class CoordinatePlugin implements TileView.Plugin, TileView.ReadyListener
    * @return The relative value of the y coordinate supplied.
    */
   public double yToLatitude(int y) {
-    return mNorth + (y * mDistanceLatitude / mPixelHeight);
-  }
-
-  /**
-   * Get a Point instance from lat lng coordinate.
-   *
-   * @param latitude
-   * @param longitude
-   * @return
-   */
-  public Point getPointFromLatLng(double latitude, double longitude) {
-    return new Point(longitudeToX(longitude), latitudeToY(latitude));
-  }
-
-  /**
-   * Determines if a given position (x, y) falls within the bounds defined.
-   *
-   * @param x The x value of the coordinate to test.
-   * @param y The y value of the coordinate to test.
-   * @return True if the point falls within the defined area; false if not.
-   */
-  public boolean contains(double x, double y) {
-    return y <= mNorth && y >= mSouth && x >= mWest && x <= mEast;
-  }
-
-  /**
-   * Get the left boundary.
-   *
-   * @return The left boundary (e.g., west longitude).
-   */
-  public double getWest() {
-    return mWest;
-  }
-
-  /**
-   * Get the right boundary.
-   *
-   * @return The right boundary (e.g., east longitude).
-   */
-  public double getEast() {
-    return mEast;
-  }
-
-  /**
-   * Get the top boundary.
-   *
-   * @return The top boundary (e.g., north latitude).
-   */
-  public double getNorth() {
-    return mNorth;
-  }
-
-  /**
-   * Get the bottom boundary.
-   *
-   * @return The bottom boundary (e.g., south latitude).
-   */
-  public double getSouth() {
-    return mSouth;
+    return mNorth + (y / mScale) * mDistanceLatitude / mPixelHeight;
   }
 
 }
