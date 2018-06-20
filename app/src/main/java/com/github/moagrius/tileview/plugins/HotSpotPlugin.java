@@ -5,6 +5,7 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
+import android.util.Log;
 import android.view.MotionEvent;
 
 import com.github.moagrius.tileview.TileView;
@@ -15,7 +16,7 @@ import java.util.List;
 public class HotSpotPlugin implements TileView.Plugin, TileView.Listener, TileView.TouchListener {
 
   private List<HotSpot> mHotSpots = new ArrayList<>();
-  private float mScale;
+  private float mScale = 1f;
   private int mX;
   private int mY;
 
@@ -27,8 +28,11 @@ public class HotSpotPlugin implements TileView.Plugin, TileView.Listener, TileVi
 
   @Override
   public void onTouch(MotionEvent event) {
-    int x = (int) ((event.getX() + mX) * mScale);
-    int y = (int) ((event.getY() + mY) * mScale);
+    if (event.getActionMasked() != MotionEvent.ACTION_DOWN) {
+      return;
+    }
+    int x = (int) ((event.getX() + mX) / mScale);
+    int y = (int) ((event.getY() + mY) / mScale);
     processHit(x, y);
   }
 
@@ -64,7 +68,7 @@ public class HotSpotPlugin implements TileView.Plugin, TileView.Listener, TileVi
   }
 
   public HotSpot addHotSpot(HotSpot hotSpot) {
-    addHotSpot(hotSpot);
+    mHotSpots.add(hotSpot);
     return hotSpot;
   }
 
@@ -72,28 +76,21 @@ public class HotSpotPlugin implements TileView.Plugin, TileView.Listener, TileVi
     mHotSpots.clear();
   }
 
-  private HotSpot getMatch(int x, int y) {  // must be scaled points
+  private HotSpot processHit(int x, int y) {  // must be scaled points
     for (int i = mHotSpots.size() - 1; i >= 0; i--) {
       HotSpot hotSpot = mHotSpots.get(i);
       if (hotSpot.contains(x, y)) {
-        return hotSpot;
+        HotSpotTapListener spotListener = hotSpot.getHotSpotTapListener();
+        if (spotListener != null) {
+          spotListener.onHotSpotTap(hotSpot);
+        }
       }
     }
     return null;
   }
 
-  public void processHit(int x, int y) {
-    HotSpot hotSpot = getMatch(x, y);
-    if (hotSpot != null) {
-      HotSpotTapListener spotListener = hotSpot.getHotSpotTapListener();
-      if (spotListener != null) {
-        spotListener.onHotSpotTap(hotSpot, x, y);
-      }
-    }
-  }
-
   public interface HotSpotTapListener {
-    void onHotSpotTap(HotSpot hotSpot, int x, int y);
+    void onHotSpotTap(HotSpot hotSpot);
   }
 
   public static class HotSpot extends Region {

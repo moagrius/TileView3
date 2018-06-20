@@ -4,7 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.view.View;
 
-class TilingBitmapView extends View {
+public class TilingBitmapView extends View {
 
   private Provider mProvider;
   private boolean mIsDirty;

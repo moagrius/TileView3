@@ -1,32 +1,58 @@
 package com.github.moagrius.tileview.plugins;
 
-import android.content.Context;
-import android.support.annotation.NonNull;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.FrameLayout;
 
 import com.github.moagrius.tileview.TileView;
 
-public class InfoWindowPlugin extends MarkerPlugin implements TileView.TouchListener {
+public class InfoWindowPlugin extends FrameLayout implements TileView.Plugin, TileView.Listener, TileView.TouchListener {
 
-  public InfoWindowPlugin(@NonNull Context context) {
-    super(context);
+  private View mView;
+
+  public InfoWindowPlugin(View view) {
+    super(view.getContext());
+    mView = view;
+    hide();
+    if (mView.getLayoutParams() == null) {
+      LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+      mView.setLayoutParams(lp);
+    }
+    addView(mView);
   }
 
   @Override
   public void install(TileView tileView) {
-    super.install(tileView);
+    tileView.getContainer().addView(this);
+    tileView.addListener(this);
     tileView.addTouchListener(this);
+  }
+
+  @SuppressWarnings("unchecked")
+  public <T extends View> T getView() {
+    return (T) mView;
+  }
+
+  public void show(int x, int y, float anchorX, float anchorY) {
+    LayoutParams lp = (LayoutParams) mView.getLayoutParams();
+    lp.leftMargin = (int) (x + mView.getMeasuredWidth() * anchorX);
+    lp.topMargin = (int) (y + mView.getMeasuredHeight() * anchorY);
+    mView.setVisibility(View.VISIBLE);
     bringToFront();
   }
 
-  public void show(View view, int x, int y, float anchorX, float anchorY, float offsetX, float offsetY) {
-    addMarker(view, x, y, anchorX, anchorY, offsetX, offsetY);
+  public void hide() {
+    mView.setVisibility(View.GONE);
   }
 
   @Override
   public void onTouch(MotionEvent event) {
-    removeAllViews();
+    hide();
+  }
+
+  @Override
+  public void onScaleChanged(float scale, float previous) {
+    hide();
   }
 
 }
