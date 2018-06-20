@@ -8,21 +8,22 @@
       android:label="@string/app_name"
       android:supportsRtl="true"
       android:theme="@style/AppTheme">
+
     <activity android:name="demo.MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
+
     <activity android:name="demo.ScrollViewDemoUniversal" />
     <activity android:name="demo.ScrollViewDemoVertical" />
     <activity android:name="demo.ScrollViewDemoHorizontal" />
     <activity android:name="demo.ScalingScrollViewDemoTextViews" />
     <activity android:name="demo.ScalingScrollViewDemoTiger" />
-    <activity android:name="demo.TileViewDemo"
-              android:screenOrientation="locked">
+    <activity android:name="demo.TileViewDemoAdvanced" android:screenOrientation="locked" />
+    <activity android:name="demo.TileViewDemoSimple" android:screenOrientation="locked" />
 
-    </activity>
   </application>
 
 </manifest>

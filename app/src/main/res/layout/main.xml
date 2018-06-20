@@ -11,51 +11,38 @@
 
     <TextView
       android:id="@+id/textview_demos_scrollview_vertical"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:padding="10dp"
       android:text="ScrollView Demo (Vertical)"
-      android:textSize="20dp" />
+      style="@style/DemoRow" />
 
     <TextView
       android:id="@+id/textview_demos_scrollview_horizontal"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:padding="10dp"
       android:text="ScrollView Demo (Horizontal)"
-      android:textSize="20dp" />
+      style="@style/DemoRow" />
 
     <TextView
       android:id="@+id/textview_demos_scrollview_universal"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:padding="10dp"
       android:text="ScrollView Demo (Universal)"
-      android:textSize="20dp" />
+      style="@style/DemoRow" />
 
     <TextView
-      android:id="@+id/textview_demos_zoomscrollview_textviews"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:padding="10dp"
-      android:text="ZoomScrollView Demo (TextViews)"
-      android:textSize="20dp" />
+      android:id="@+id/textview_demos_scalingscrollview_textviews"
+      android:text="ScalingScrollView Demo (TextViews)"
+      style="@style/DemoRow" />
 
     <TextView
-      android:id="@+id/textview_demos_zoomscrollview_tiger"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:padding="10dp"
-      android:text="ZoomScrollView Demo (SVG Tiger)"
-      android:textSize="20dp" />
+      android:id="@+id/textview_demos_scalingscrollview_tiger"
+      android:text="ScalingScrollView Demo (SVG Tiger)"
+      style="@style/DemoRow" />
 
     <TextView
-      android:id="@+id/textview_demos_zoomscrollview_tiles"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:padding="10dp"
-      android:text="ZoomScrollView Demo (Tiles)"
-      android:textSize="20dp" />
+        android:id="@+id/textview_demos_tileview_simple"
+        android:text="TileView Demo (Simple)"
+        style="@style/DemoRow" />
+    
+    <TextView
+      android:id="@+id/textview_demos_tileview_advanced"
+      android:text="TileView Demo (Advanced)"
+      style="@style/DemoRow" />
 
   </LinearLayout>
 

@@ -2,8 +2,6 @@ package demo;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.util.Log;
-import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -21,10 +19,8 @@ public class Helpers {
       textView.setTextSize(30);
       textView.setPadding(100, 100, 100, 100);
       textView.setBackgroundColor(Color.BLACK);
-      textView.setOnClickListener(sOnClickListener);
       linearLayout.addView(textView);
     }
   }
 
-  private static View.OnClickListener sOnClickListener = view -> Log.d("SV", "clicked!");
 }

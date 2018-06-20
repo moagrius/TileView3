@@ -9,7 +9,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -125,13 +124,10 @@ public class TileView extends ScalingScrollView implements
   }
 
   public boolean addReadyListener(ReadyListener readyListener) {
-    Log.d("TV", "addReadyListener");
     if (isReady()) {
-      Log.d("TV", "already ready, just run it");
       readyListener.onReady(this);
       return false;
     }
-    Log.d("TV", "adding to list of ready listeners");
     return mReadyListeners.add(readyListener);
   }
 
@@ -175,9 +171,7 @@ public class TileView extends ScalingScrollView implements
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     super.onLayout(changed, left, top, right, bottom);
     mIsLaidOut = true;
-    Log.d("TV", "onLayout, about to call attemptOnReady");
     if (!attemptOnReady()) {
-      Log.d("TV", "onLayout, attemptOnReady returned false");
       updateViewportAndComputeTilesThrottled();
     }
   }
@@ -215,7 +209,6 @@ public class TileView extends ScalingScrollView implements
 
   @Override
   public void onScaleChanged(ScalingScrollView scalingScrollView, float currentScale, float previousScale) {
-    Log.d("TV", "tileview onscalechanged, about to notify listeners");
     for (Listener listener : mListeners) {
       listener.onScaleChanged(currentScale, previousScale);
     }
@@ -440,7 +433,6 @@ public class TileView extends ScalingScrollView implements
   }
 
   private boolean isReady() {
-    Log.d("TV", "isReady...  prepared? " + mIsPrepared + ", laid out? " + mIsLaidOut);
     return mIsPrepared && mIsLaidOut;
   }
 
@@ -452,7 +444,6 @@ public class TileView extends ScalingScrollView implements
       throw new IllegalStateException("TileView requires height and width be provided via Builder.setSize");
     }
     mIsPrepared = true;
-    Log.d("TV", "prepare, about to call attemptOnReady");
     attemptOnReady();
   }
 
@@ -461,9 +452,7 @@ public class TileView extends ScalingScrollView implements
    * @return True if the single ready pass executes, false otherwise (either because not ready, or already run)
    */
   private boolean attemptOnReady() {
-    Log.d("TV", "attemptOnReady");
     if (isReady() && !mHasRunOnReady) {
-      Log.d("TV", "is ready and has not run readies, run now");
       mHasRunOnReady = true;
       determineCurrentDetail();
       updateViewportAndComputeTiles();
@@ -473,7 +462,6 @@ public class TileView extends ScalingScrollView implements
       mReadyListeners.clear();
       return true;
     }
-    Log.d("TV", "either not ready or has already run.  isReady? " + isReady() + ", already run? " + mHasRunOnReady);
     return false;
   }
 
