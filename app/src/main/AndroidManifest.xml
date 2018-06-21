@@ -21,8 +21,8 @@
     <activity android:name="demo.ScrollViewDemoHorizontal" />
     <activity android:name="demo.ScalingScrollViewDemoTextViews" />
     <activity android:name="demo.ScalingScrollViewDemoTiger" />
-    <activity android:name="demo.TileViewDemoAdvanced" android:screenOrientation="locked" />
-    <activity android:name="demo.TileViewDemoSimple" android:screenOrientation="locked" />
+    <activity android:name="demo.TileViewDemoAdvanced" />
+    <activity android:name="demo.TileViewDemoSimple" />
 
   </application>
 
