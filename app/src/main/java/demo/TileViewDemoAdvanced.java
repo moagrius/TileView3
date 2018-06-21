@@ -1,12 +1,12 @@
 package demo;
 
+import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.CornerPathEffect;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
@@ -30,7 +30,7 @@ import java.util.Locale;
  * @author Mike Dunn, 2/4/18.
  */
 
-public class TileViewDemoAdvanced extends AppCompatActivity {
+public class TileViewDemoAdvanced extends Activity {
 
   public static final double NORTH = -75.17261900652977;
   public static final double WEST = 39.9639998777094;
