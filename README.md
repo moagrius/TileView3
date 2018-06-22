@@ -1,5 +1,12 @@
+![Release Badge](https://img.shields.io/github/release/moagrius/TileView.svg)
+
 # TileView3
-The TileView widget is a subclass renders and positions bitmap tiles to compose a larger, original image, usually one too large to display normally (very large images in Android will often result in an `OutOfMemoryError`).
+The TileView widget is a subclass of ViewGroup renders and positions bitmap tiles to compose a larger, original image, often one too large to display normally.
+
+![tileview](https://user-images.githubusercontent.com/701344/41755597-c5986472-759d-11e8-83d9-f588b04f475d.gif)
+
+
+Very large images in Android will often result in an `OutOfMemoryError`.  Memory is finite, and bitmaps take a great deal of it.  `TileView` solves this by stitching together small pieces of the image (tiles) and displaying them reconstructed in the area of the screen visible to your user.
 
 Out of the box, the TileView will manage the tiled image, including subsampling when needed, flinging, dragging, scaling, and multiple levels of detail.
 
@@ -7,22 +14,24 @@ Additional plugins are provided to allow adding overlaying Views (markers), info
 
 This is the first release (June 20) of TileView version 3.0.  TileView version 2.0 was released nearly 5 years ago, and is showing its age.  TileView3 is much improved, much more modern, and much simpler, and I hope everyone will take advantage of what I've learned in that time.
 
-**TileView3 is in beta.**  Actually, probably closer to an alpha, but other than help from some great contributors, I'm the sole maintainer, so this is as close as I'm going to get to a beta without dedicated time.
+**Please note that TileView3 is in beta.**  Actually, probably closer to an alpha, but other than help from some great contributors, I'm the sole maintainer, so this is as close as I'm going to get to a beta without dedicated time.
 
-This is a major upgrade and is not backwards compatible with TileView version 2.  The last release of version 2 is 2.7.7, and is available as a branch, here: https://github.com/moagrius/TileView/tree/version-2.7.7.  No further work will be done on version 2.
+This is a major upgrade and is not backwards compatible with TileView version 2.  If you're need a stable version, the last release of version 2 is 2.7.7, and is available as a branch, here: https://github.com/moagrius/TileView/tree/version-2.7.7, or from the [releases page](https://github.com/moagrius/TileView/releases).  No further work will be done on version 2.
 
 **This is truly open source.**  I'm very happy to accept improvements or bug fixes; create an issue, branch, and create a PR.  I'm not super interested in finding bugs - I already know what most of them are, and will start to document them as this make its way into the wild.
 
 ## Installation
 Add this to your app module's build.gradle.
-`implementation 'com.qozix:tileview:3.0`
+```
+implementation 'com.qozix:tileview:3.0'
+```
 
-## Quick Setup
-1. Tile an image into image slices of a set size, e.g., 256x256 [instructions](#TODO)
+##### Quick Setup
+1. Tile an image into image slices of a set size, e.g., 256x256 [instructions](https://github.com/moagrius/TileView/wiki/Creating-Tiles)
 2. Name the tiles by the column and row number, e.g., 'tile-1-2.png' for the image tile that would be at the 2nd column from left and 3rd row from top.
 3. Create a new application with a single activity ('Main').
 4. Save the image tiles to your assets directory.
-5. Add the [latest version](## Installation) to your gradle dependencies.
+5. Add the [latest version](##installation) to your gradle dependencies.
 6. In the Main Activity, use this for onCreate:
 ```
 @Override
@@ -48,14 +57,14 @@ As a user, the biggest things you'll notice are:
 1.  Greatly improved bitmap management.  For details, see [How It Works](### How It Works)
 1.  Decomposition.  This takes a little explanation.  There are now 3 major, public widgets: `ScrollView`, `ScalingScrollView`, and `TileView`.  Each inherits from the last.  You'll notice the demo module has `Activities` for each of these classes.
 
-### ScrollView
+##### ScrollView
 `com.qozix.widgets.ScrollView` is a clone of AOSP's `ScrollView` and `HorizontalScrollView`, with some inspiration taken from `RecyclerView` and `GestureDetector`.  That means the APIs will be very familiar to anyone who's used the framework-provided `ScrollView`.  The big difference here is that `com.qozix.widgets.ScrollView` functions along both axes, without configuation.  If you have a layout that matches parent with and expands vertically, `ScrollView` will scroll it vertically - the converse holds.  If you have a layout that larger in both directions than the parent, `ScrollView` will scroll in any direction.
 
 Again, no configration is required - there is no `orientation` attribute - it does it's best to figure out what makes sense.
 
 At some point, `ScrollView` will be it's own repository, and will be a dependency of `ScalingScrollView`.
 
-### ScalingScrollView
+##### ScalingScrollView
 `ScalingScrollView` extends `ScrollView` and adds scaling APIs, as well as built-in scaling gesture managent (pinch and double tap to zoom).  By default, it will visually scale its content, but that can be disabled with a single setter `setShouldVisuallyScaleContents(false)`, and you can manage your content with a porportional scaled value.  Similarly, it will lay itself out to the current scale value, unless that too is disabled `setWillHandleContentSize(true)`
 
 At some point, `ScalingScrollView` will be it's own repository, and will be a dependency of `TileView`.
@@ -64,15 +73,15 @@ At some point, `ScalingScrollView` will be it's own repository, and will be a de
 
 From here down may be a bit dry but might be interesting to people interested in contributing to the process.
 
-### How It Works
+## How It Works
 
-#### Problem
+##### Problem
 You have an image too large to display with an OutOfMemoryError.
 
-#### Solution
+##### Solution
 Chop the image into tiles and reconstruct them to fill the viewport, and only the viewport.  As the user scrolls (or scales), aggressively recycle any bitmap data that is not visible to the user at any given time, and render any new "tiles" that are not within the viewable area.
 
-#### Basic operation
+##### Basic operation
 Use the width and height of the view that contains this image, plus it's scroll position, to determine space we call the viewport.
 
 Divide the corners of the viewport (left, top, right, bottom) by the size of the cell, which provide the start and end row and column.  Round down the left and top and round up the right and bottom to make sure there are not empty patches - as long as any pixel of a tile is visible in the viewport, it must be rendered (one reason - among many - to carefully consider tile size, and not default to as large as possible).
@@ -113,14 +122,14 @@ And your grid looks like this:
 
 As long as there's only the one size, scale is uniformly applied - just multiple tile size in the previous math by the current scale, and your grid remains intact.
 
-#### Scaling
+##### Scaling
 At every half way point, the image is 50% or small, so subsample it to save memory: https://developer.android.com/topic/performance/graphics/load-bitmap#load-bitmap
 
 Remember that each subsample (representing half the size) will actually quarter the amount of memory required for the bitmap.  Do this at every half: 50%, 25, 12.5, 6.25, 3.625, etc.
 
 When you add another detail level, things get a little more complicated, but not terribly...
 
-#### Detail/Zoom Levels
+##### Detail/Zoom Levels
 - Subsampling starts over at the last provided detail level, so it's no longer directly taken from the scale 
 - Your grid now has to be "unscaled" - now it's tile size * scale (as it was before), but now must be unscaled by an amount equal to the emulation of the detail level.
 - This unscaled value is effectively the inverse of the scale, so 50% scale would be times 2, 25% would be times 4, 12.5% would be times 8
@@ -129,7 +138,7 @@ When you add another detail level, things get a little more complicated, but not
 - If you have a single detail level and let the program subsample for you, the total memory footprint stays (about) the same, but the number of times the disk or caches are hit is very high, and this can appear very slow
 - To remedy this, we use "patching".  With patching, things get a lot more complicated.
 
-#### Patching
+##### Patching
 - "Patching" is basically grabbing as many subsampled tiles as needed to create a full sized tiles, stitching them together into a single bitmap, and stuffing that in the cache
 - A very important number here is the "image subsample".  this is distince from the "zoom sample" described above
 - The image subsampe is derived from the _distance_ you are from the last provided detail level.  so if you have only 1 detail level (0) and you're at 20%, you're at image subsample 4 (50% would be 2, 25% would be 4, 12.5% would be 8, etc)
@@ -160,7 +169,7 @@ To remedy this, we:
 
 So all the preceding "works" pretty well, but decoding the same data over and over is a lot of work that we can probably skip if we're smart about it.
 
-#### Bitmap Caching and Re-use
+##### Bitmap Caching and Re-use
 Emphasis on **and reuse** - the reuse bit is as important (maybe mores) than the traditional caching piece.
 
 The default providers assume we're reading tiles from disk already, so the only thing that goes into disk-cache are the patched tiles, mentioned above (this behavior can be modified, if for example you're reading tiles from a server).  Everything, however, is subject to a memory cache.  The default is one-quarter of available RAM, but the more you can spare for this, the better your performance will be.  This serves as both a straight bitmap cache, and a pool of re-usable objects: **When we first go to decode a tile, we check if that exact bitmap is in the memory cache - if it is, great, use it - if it's not, grab the oldest bitmap in the cache and re-use the underlying bitmap (BitmapFactory.Options.inBitmap)**
